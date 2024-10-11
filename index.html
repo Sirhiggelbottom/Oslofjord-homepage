@@ -5,27 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
+    <script src="script.js" defer></script>   
+
 </head>
+
+
 <body>
 
     <div class="container">
-        <div class="box" id="dateTimeBox">
+
+        <div class="top_boxes" id="dateTimeBox">
             <h2>Date and Time</h2>
             <div id="dateTime"></div>
         </div>
-        <div class="box" id="weatherBox">
+        <div class="top_boxes" id="weatherBox">
             <h2>Weather Forecast</h2>
-            <iframe src="https://www.yr.no/nb/v%C3%A6rvarsel/daglig-tabell/1-32236/Norge/Vestfold/Sandefjord/Melsomvik" width="100%" height="100%" title="Weather"></iframe>
+            <div id="weatherData"></div>
         </div>
-        <div class="box" id="contentBox">
+
+        <div class="bottom_boxes" id="contentBox">
             <h2>Content that is being cycled</h2>
             <div id="cycledContent"></div>
         </div>
-        <div class="box" id="queueBox">
+        <div class="bottom_boxes" id="queueBox">
             <h2>Content Queue</h2>
             <div id="contentQueue"></div>
         </div>
+
     </div>
 
 </body>

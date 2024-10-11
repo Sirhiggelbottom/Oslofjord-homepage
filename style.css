@@ -17,17 +17,30 @@ body {
     padding: 20px;
 }
 
-.box {
+.top_boxes {
     border: 2px solid black;
     padding: 20px;
     background-color: white;
     position: relative;
-    height: 200px;
     overflow: auto;
+    height: 200px;
 }
+
+.bottom_boxes {
+    border: 2px solid black;
+    padding: 20px;
+    background-color: white;
+    position: relative;
+    overflow: auto;
+    height: 800px;
+}
+
 
 #dateTimeBox {
     grid-column: 1 / span 1;
+    width: 500px;
+    box-sizing: content-box;
+    overflow: auto;
 }
 
 #weatherBox {
@@ -35,11 +48,23 @@ body {
 }
 
 #contentBox {
-    grid-column: 1 / span 2;
-    height: 400px;
+    grid-column: 1 / span 1;
+    width: 2000px;
+    box-sizing: content-box;
+    overflow: auto;
 }
 
 #queueBox {
     grid-column: 2 / span 1;
-    height: 400px;
+    width: 400px;
+}
+
+#cycledContent {
+    border: none;
+    padding: 20px;
+}
+
+#weatherData {
+    border: none;
+    padding: 20px;
 }
