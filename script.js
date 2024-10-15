@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const cycledContent = document.getElementById('cycledContent');
+    var contentJSON = "";
     //cycledContent.innerHTML = "test";
     
     // Display current date and time
@@ -9,16 +10,18 @@ document.addEventListener("DOMContentLoaded", function () {
         dateTimeBox.innerHTML = now.toLocaleString();
     }
 
+
     setInterval(updateDateTime, 1000);
     updateDateTime();
-   
-
+ 
     // Content cycling logic
-    const content = [
-        { type: 'excel', url: '2024-Arrangementer-Vaktplan.xlsx' },
-        { type: 'excel', url: 'https://oslofjord.sharepoint.com/:x:/s/Felles2/EW_yqOUxicRGjyesjhgyJUYBFKJOs01kAyrAdcSIxZiYmg?e=3LYZJS' },
-        { type: 'website', url: 'https://service.oslofjord.com/scripts/ticket.fcgi?_sf=0&action=mainMenu' },
-        { type: 'website', url: 'https://prtg-oslofjord.msappproxy.net/public/mapshow.htm?id=55027&mapid=807498E5-9B2F-4986-959F-8F62EBB7C6E9' }
+    const cycle_content = [
+        { type: "Superoffice", url: "https://service.oslofjord.com/scripts/ticket.fcgi?_sf=0&action=mainMenu" },
+        { type: "Vaktliste Elektro", url: "https://docs.google.com/document/d/13L3dL9Wc2O47zYmxbM5LiIV-lyJrWuFc6y11aNTeq9M/edit?tab=t.0" },
+        { type: "Vaktliste Renovasjon", url: "https://docs.google.com/document/d/1LAMUOZ0JfId6mbSIx6QhZ7x6QskTk85r68E_OAWVLNY/edit?tab=t.0" },
+        { type: "Vaktliste Bygg", url: "https://docs.google.com/document/d/1699ljKX_ohgo4iWQbr9lwbwqjwiTyEN_21-vzGD2QeE/edit?tab=t.0" },
+        { type: "System status", url: "https://prtg-oslofjord.msappproxy.net/public/mapshow.htm?id=55027&mapid=807498E5-9B2F-4986-959F-8F62EBB7C6E9" },
+        { type: "Vær data", url: "https://api.met.no/weatherapi/locationforecast/2.0/mini.json?lat=59.22&lon=10.33" }
     ];
 
     const cycleTime = 10000;
@@ -29,63 +32,31 @@ document.addEventListener("DOMContentLoaded", function () {
         const cycledContent = document.getElementById('cycledContent');
         const contentQueue = document.getElementById('contentQueue');
     
-        const currentContent = content[currentIndex];
-        cycledContent.innerHTML = `<iframe src="${currentContent.url}" width="100%" height="600"></iframe>`;
+        var currentContent = cycle_content[currentIndex];
+        if (currentContent.type == "Vær data"){
+            currentContent = cycle_content[(currentIndex + 1) % cycle_content.length]
+        }
+
+        //
+
+        if (cycle_content[currentIndex].type == "System status"){
+            cycledContent.innerHTML = `<iframe src="${currentContent.url}" width="175%" height="1225px"></iframe>`;
+            adjustIframeScale(cycledContent, [700, 100], 0.75);
+        } else {
+            cycledContent.innerHTML = `<iframe src="${currentContent.url}" width="100%" height="600"></iframe>`;
+        }
     
         // Show the full queue of upcoming content
         let queueHTML = '<strong>Upcoming Content:</strong><br>';
-        for (let i = 1; i < content.length; i++) {
-            const nextIndex = (currentIndex + i) % content.length;
-            queueHTML += `${i}. ${content[nextIndex].url}<br>`;
+        for (let i = 1; i < cycle_content.length; i++) {
+            const nextIndex = (currentIndex + i) % cycle_content.length;
+            queueHTML += `${i}. ${cycle_content[nextIndex].url}<br>`;
         }
     
         contentQueue.innerHTML = queueHTML;
     
-        currentIndex = (currentIndex + 1) % content.length;
+        currentIndex = (currentIndex + 1) % cycle_content.length;
     }
-    
-    /*function getAuthdata(){
-        var result = {};
-        try{
-            fetch("auth_config.json")
-                .then(response => response.text())
-                .then(data => {
-                    
-                
-                });
-        } catch (e){
-            cycledContent.innerHTML = `Error when reading authFile: ${e}`;
-            return null;
-        }
-    }
-
-    var authData = getAuthdata();*/
-    
-
-
-    /*
-
-    try {
-
-        var msalConfig = {
-            auth: {
-                clientId: authData.find(line => line.startsWith("client_id:")).split(":")[1].trim().replace(/^"|"$/g, ''),
-                authority: `https://login.microsoftonline.com/${authData.find(line => line.startsWith("tenant_id:")).split(":")[1].trim().replace(/^"|"$/g, '')}`,
-                redirectUri: "http://localhost"
-            }
-        };
-
-        cycledContent.innerHTML = `redirecturl is: ${msalConfig}`;
-
-    } catch (e){
-        cycledContent.innerHTML = `Error when reading authfile: ${e}`;
-    }
-    */
-
-    //cycledContent.innerHTML = msalConfig ? "true" : "false";
-    
-
-    
 
     function adjustIframeScale(iframe, original_size ,scaleFactor) {
 
@@ -106,12 +77,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const contentQueue = document.getElementById('contentQueue');
         const weatherData = document.getElementById('weatherData');
 
-        const currentContent = content[3];
+        const currentContent = cycle_content[1];
 
         cycledContent.innerHTML = `<iframe src="${currentContent.url}" width="175%" height="1225px"></iframe>`;
         
         switch(currentContent.url){
-            case `${content[3].url}`:
+            case `${cycle_content[3].url}`:
                 adjustIframeScale(cycledContent, [700, 100], 0.75);
                 break;
             
@@ -123,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
-    showcontent();
+    //showcontent();
 
     /*setInterval(cycleContent, cycleTime);
     cycleContent();*/
