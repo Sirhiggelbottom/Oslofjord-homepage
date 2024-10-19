@@ -2,8 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const cycledContent = document.getElementById('cycledContent');
 
     var weather_json;
-
-    
+    var hasUpdateImagesBeenRan = false;
     
     //cycledContent.innerHTML = "test";
     
@@ -16,7 +15,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setInterval(updateDateTime, 1000);
     updateDateTime();
-   
 
     // Content cycling logic
     const content = [
@@ -27,7 +25,23 @@ document.addEventListener("DOMContentLoaded", function () {
         { type: 'System Status', url: 'https://prtg-oslofjord.msappproxy.net/public/mapshow.htm?id=55027&mapid=807498E5-9B2F-4986-959F-8F62EBB7C6E9' }
     ];
 
-    
+    function getWeather(){
+
+        fetch('http://localhost:3000/get-weather')
+            .then(response => response.json())
+            .then(data => {
+                //console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
+                if (!(data["Average_temp"] == "NaN" || data["Average_rain"] == "NaN" || data["Average_wind"] == "NaN" || data["Average_cloud"] == "NaN" || data["Predicted_weather"] == "NaN")){
+                    weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%<br>Vær neste time: ${data["Predicted_weather"]}`;
+                }
+            })
+            .catch((e) => {
+                console.error(`Error: ${e}`);
+            });
+    }
+
+    setInterval(getWeather, 320000)
+    getWeather();
 
     const cycleTime = 10000;
 

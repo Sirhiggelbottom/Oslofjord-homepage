@@ -12,20 +12,19 @@ const { hostname } = require('os');
 const port = 3000;
 const app = express();
 
-
-
 const baseURL = "http://localhost:3000";
+var weatherData = "";
 
 app.use(cors());
 
 // Load environment variables
-const authCheckURI = process.env.REDIRECT_URI_CHECK, reAuthURI = process.env.REDIRECT_URI_REAUTH, redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET;
+const authCheckURI = process.env.REDIRECT_URI_CHECK, reAuthURI = process.env.REDIRECT_URI_REAUTH, redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET, refreshToken = process.env.REFRESH_TOKEN;
 
 // Create an OAuth2 client
 var oAuth2Client = new google.auth.OAuth2(  
-  clientID,
-  clientSecret,
-  authCheckURI
+    clientID,
+    clientSecret,
+    authCheckURI
 
 );
 
@@ -44,20 +43,20 @@ const usorterteBilder = {};
 
 // Root route to handle "/"
 app.get('/', (req, res) => {
-  res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
+    res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
 });
 
 // Step 1: Direct users to Google's OAuth 2.0 login page
 app.get('/auth', (req, res) => {
-  const authUrl = oAuth2Client.generateAuthUrl({
+    const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline', // To get a refresh token
     scope: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/docs', 'https://www.googleapis.com/auth/drive.photos.readonly'],
     redirect_uri: authCheckURI,
-  });
-  
-  process.env.AUTHURL = authUrl;
+    });
 
-  res.redirect(authUrl);
+    process.env.AUTHURL = authUrl;
+
+    res.redirect(authUrl);
 });
 
 app.get('/auth/check', async (req, res) => {
@@ -93,47 +92,42 @@ app.get('/reauth', (req, res) => {
 
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: 'offline', // To get a refresh token
-      scope: ['https://www.googleapis.com/auth/drive.readonly'],
-      prompt: 'consent',
-      redirect_uri: process.env.REDIRECT_URI,
-  
+        scope: ['https://www.googleapis.com/auth/drive.readonly'],
+        prompt: 'consent',
+        redirect_uri: process.env.REDIRECT_URI,
+
     });
     process.env.AUTHURL = authUrl;
     res.redirect(authUrl);
-  });
-
-
+});
 
 // Step 2: Handle the OAuth 2.0 callback and get the access token and refresh token
 app.get('/auth/callback', async (req, res) => {
-  const code = req.query.code;
+    const code = req.query.code;
 
-  try {
+    try {
     // Exchange the authorization code for an access token and refresh token
-    const { tokens } = await oAuth2Client.getToken(code);
-    oAuth2Client.setCredentials(tokens);
+        const { tokens } = await oAuth2Client.getToken(code);
+        oAuth2Client.setCredentials(tokens);
 
-    // Store the refresh token securely (e.g., in a database)
-    process.env.REFRESH_TOKEN = tokens.refresh_token;
+        // Store the refresh token securely (e.g., in a database)
+        process.env.REFRESH_TOKEN = tokens.refresh_token;
 
-    res.redirect(`${baseURL}/list-folders`);
-  } catch (error) {
-    console.error('Error retrieving access token:', error);
-    res.status(500).send('Error retrieving access token.');
-  }
+        res.redirect(`${baseURL}/list-folders`);
+    } catch (error) {
+        console.error('Error retrieving access token:', error);
+        res.status(500).send('Error retrieving access token.');
+    }
 });
-
-
 
 // Step 3: Use the stored refresh token to get a new access token and access the Google Drive API
 app.get('/list-folders', async (req, res) => {
     // Set credentials with the refresh token
     oAuth2Client.setCredentials({
       refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-      
     });
 
-  
+
     try {
         try{
             debug("Trying to get images");
@@ -199,10 +193,10 @@ app.get('/list-folders', async (req, res) => {
             console.error('Error getting a response:', e);
             res.status(500).send('Error getting response.');
         }
-      
+    
     } catch (error) {
-      console.error('Error listing folders:', error);
-      res.status(500).send('Error listing folders.');
+        console.error('Error listing folders:', error);
+        res.status(500).send('Error listing folders.');
     }
 });
 
@@ -270,8 +264,6 @@ const downloadImage = async (url, imagePath) => {
     });
 };
 
-
-
 var expires = "";
 var lastModifed = "";
 
@@ -314,14 +306,14 @@ async function readWeatherData(weatherPath) {
     var windSpeeds = [];
     var windSpeed;
 
+    var rains = [];
+    var rain;
+
     var cloudCoverages = [];
     var cloudCoverage;
 
     var predictedWeathers = []
     var predicredWeather;
-
-    const typesOfWeatherFilePath = path.join(__dirname, 'weather', 'WeatherTypes.txt');
-    ensureFileExists(typesOfWeatherFilePath);
 
     var weatherTimeSeries = Object.keys(weatherValues);
     var timeSeriesLength = weatherTimeSeries.length;
@@ -335,6 +327,9 @@ async function readWeatherData(weatherPath) {
         
         windSpeed = weatherValues[i]["data"]["instant"]["details"]["wind_speed"];
         windSpeeds.push(windSpeed);
+
+        rain = weatherValues[i]["data"]["next_1_hours"]["details"]["precipitation_amount"];
+        rains.push(rain);
 
         cloudCoverage = weatherValues[i]["data"]["instant"]["details"]["cloud_area_fraction"];
         cloudCoverages.push(cloudCoverage);
@@ -362,6 +357,15 @@ async function readWeatherData(weatherPath) {
         sumWind += wind;
     });
 
+    var sumRain = 0;
+    var avgRain = 0;
+
+    rains.forEach((rain) => {
+        sumRain += rain;
+    });
+
+    avgRain = (sumRain / rains.length).toFixed(1);
+
     avgWind = (sumWind / windSpeeds.length).toFixed(1);
 
     var sumClouds = 0;
@@ -375,7 +379,9 @@ async function readWeatherData(weatherPath) {
 
     debug(`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%\nPredicted Weather: ${predicredWeather}`);
 
-    return [avgTemp, avgWind, avgClouds, predicredWeather];
+    //return [avgTemp, avgWind, avgClouds, predicredWeather];
+
+    return {"Average_temp" : avgTemp, "Average_wind" : avgWind, "Average_rain": avgRain, "Average_cloud" : avgClouds, "Predicted_weather": predicredWeather};
     
 }
 
@@ -421,6 +427,8 @@ app.get('/download-images', async (req, res) => {
 
         await Promise.all(downloadPromises);
 
+        setInterval(updateImages, 3600000);
+
         res.redirect(`${baseURL}/download-weather`);
 
     } catch (e){
@@ -436,6 +444,7 @@ app.get(`/download-weather`, async (req, res) => {
         ensureDirectoryExists(weatherDir);
 
         const weatherPath = path.join(weatherDir, `WeatherData.json`);
+        ensureFileExists(weatherPath);
 
         var options;
 
@@ -466,7 +475,10 @@ app.get(`/download-weather`, async (req, res) => {
         await downloadWeatherData(options, weatherPath, weatherDir);
         //console.log("Reading weather data")
 
-        const weatherData = await readWeatherData(weatherPath); // Skrive til værdata fil slik at client kan hente data.
+        weatherData = await readWeatherData(weatherPath);
+
+        setInterval(downloadWeatherData, 300000);
+        setInterval(readWeatherData, 320000);
 
     } catch (e){
         console.error(`Error downloading weatherdata, reason:\n\n${e}`);
@@ -476,7 +488,248 @@ app.get(`/download-weather`, async (req, res) => {
     
 });
 
+app.get('/get-weather', (req, res) => {
+    if(weatherData == ""){
+        res.json({
+            Average_temp : "NaN",
+            Average_rain : "NaN",
+            Average_wind : "NaN",
+            Average_cloud : "NaN",
+            Predicted_weather : "NaN"
+        });
+    } else {
+        res.json(weatherData);
+    }
+    
+});
+
+/*app.get('/update-images', async (req, res) => {
+    
+    // Set credentials with the refresh token
+    oAuth2Client.setCredentials({
+        refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+    });
+
+
+    try {
+        try{
+            debug("Trying to get images");
+            // Use the Google Drive API to list folders
+            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+            
+            const response = await drive.files.list({
+                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
+                fields: 'nextPageToken, files(id, name, parents)',
+                spaces: 'drive',
+            });
+
+            debug("Trying to sort through response data");
+
+            response.data.files.forEach(function(file){
+
+                if (file.name.includes("Bilde_Elektro")){
+                    elektroBilder[file.name] = {
+                        file_name : file.name,
+                        file_id: file.id
+                    };
+                    debug("Elektro bilde");
+                } else if (file.name.includes("Bilde_Renovasjon")){
+                    renoBilder[file.name] = {
+                        file_name : file.name,
+                        file_id: file.id
+                    };
+                    debug("Reno bilde");
+                } else if (file.name.includes("Bilde_Bygg")){
+                    byggBilder[file.name] = {
+                        file_name : file.name,
+                        file_id: file.id
+                    };
+                    debug("Bygg bilde");
+                } else {
+                    usorterteBilder[file.name] = {
+                        file_name : file.name,
+                        file_id: file.id
+                    };
+                }
+                
+                debug(`\nFound file.\nFile name: ${file.name}\nFile ID: ${file.id}\nParent folder: ${file.parents}\n`);
+
+            });
+
+            debug(`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
+        
+            const nyesteElektroBilde = getNewestImage(elektroBilder);
+            const nyesteRenoBilde = getNewestImage(renoBilder);
+            const nyesteByggBilde = getNewestImage(byggBilder);
+
+            process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
+            process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
+            process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
+
+            
+
+            debug(`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
+
+        } catch (e){
+            console.error('Error getting a response:', e);
+            res.status(500).send('Error getting response.');
+        }
+    
+    } catch (error) {
+        console.error('Error listing folders:', error);
+        res.status(500).send('Error listing folders.');
+    }
+
+    try{
+        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
+
+        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+
+        const links = [];
+    
+        fileLinks.forEach(linkInfo => {
+            links.push(linkInfo.webContentLink);
+        });
+
+        const imageDir = path.join(__dirname, 'images');
+        ensureDirectoryExists(imageDir);
+
+        const downloadPromises = links.map((link, index) => {
+            const imagePath = path.join(imageDir, `image${index + 1}.png`);
+            return downloadImage(link, imagePath);
+        });
+
+        await Promise.all(downloadPromises);
+
+    } catch (e){
+        console.error(`Error while downloading images: ${e}`);
+        res.status(500).send("Error downloading images");
+    }
+
+    res.send("Images updated successfully");
+
+});*/
+
+
+function updateImages(){
+    debug("Updating images");
+    
+    fetch(`${baseURL}/update-images`).catch((e) => {
+        console.error(`Error: ${e}`);
+    });
+
+    app.get('/update-images', async (req, res) => {
+        debug("Trying to download images");
+        // Set credentials with the refresh token
+        oAuth2Client.setCredentials({
+            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+        });
+    
+    
+        try {
+            try{
+                debug("Trying to get images");
+                // Use the Google Drive API to list folders
+                const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+                
+                const response = await drive.files.list({
+                    q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
+                    fields: 'nextPageToken, files(id, name, parents)',
+                    spaces: 'drive',
+                });
+    
+                debug("Trying to sort through response data");
+    
+                response.data.files.forEach(function(file){
+    
+                    if (file.name.includes("Bilde_Elektro")){
+                        elektroBilder[file.name] = {
+                            file_name : file.name,
+                            file_id: file.id
+                        };
+                        debug("Elektro bilde");
+                    } else if (file.name.includes("Bilde_Renovasjon")){
+                        renoBilder[file.name] = {
+                            file_name : file.name,
+                            file_id: file.id
+                        };
+                        debug("Reno bilde");
+                    } else if (file.name.includes("Bilde_Bygg")){
+                        byggBilder[file.name] = {
+                            file_name : file.name,
+                            file_id: file.id
+                        };
+                        debug("Bygg bilde");
+                    } else {
+                        usorterteBilder[file.name] = {
+                            file_name : file.name,
+                            file_id: file.id
+                        };
+                    }
+                    
+                    debug(`\nFound file.\nFile name: ${file.name}\nFile ID: ${file.id}\nParent folder: ${file.parents}\n`);
+    
+                });
+    
+                debug(`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
+            
+                const nyesteElektroBilde = getNewestImage(elektroBilder);
+                const nyesteRenoBilde = getNewestImage(renoBilder);
+                const nyesteByggBilde = getNewestImage(byggBilder);
+    
+                process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
+                process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
+                process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
+    
+                
+    
+                debug(`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
+    
+            } catch (e){
+                console.error('Error getting a response:', e);
+                res.status(500).send('Error getting response.');
+            }
+        
+        } catch (error) {
+            console.error('Error listing folders:', error);
+            res.status(500).send('Error listing folders.');
+        }
+    
+        try{
+            const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
+    
+            const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+    
+            const links = [];
+        
+            fileLinks.forEach(linkInfo => {
+                links.push(linkInfo.webContentLink);
+            });
+    
+            const imageDir = path.join(__dirname, 'images');
+            ensureDirectoryExists(imageDir);
+    
+            const downloadPromises = links.map((link, index) => {
+                const imagePath = path.join(imageDir, `image${index + 1}.png`);
+                return downloadImage(link, imagePath);
+            });
+    
+            await Promise.all(downloadPromises);
+    
+        } catch (e){
+            console.error(`Error while downloading images: ${e}`);
+            res.status(500).send("Error downloading images");
+        }
+    
+        res.send("Images updated successfully");
+        debug("updateImages finished");
+    
+    });
+
+    
+}
+
 // Start the server
 app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+    console.log('Server running on http://localhost:3000');
 });
