@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const cycledContent = document.getElementById('cycledContent');
+    const weatherLastUpdated = document.getElementById('last_updated');
 
     var weather_json;
     var hasUpdateImagesBeenRan = false;
@@ -18,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Content cycling logic
     const content = [
-        { type: 'Vaktliste elektro', url: 'http://localhost:3000/images/image1.png' },
+        { type: 'Vaktliste Elektro', url: 'http://localhost:3000/images/image1.png' },
         { type: 'Vaktliste Renovasjon', url: 'http://localhost:3000/images/image2.png' },
         { type: 'Vaktliste Bygg', url: 'http://localhost:3000/images/image3.png' },
         { type: 'Superoffice', url: 'https://service.oslofjord.com/scripts/ticket.fcgi?_sf=0&action=mainMenu' },
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(data => {
                 //console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
                 if (!(data["Average_temp"] == "NaN" || data["Average_rain"] == "NaN" || data["Average_wind"] == "NaN" || data["Average_cloud"] == "NaN" || data["Predicted_weather"] == "NaN")){
+                    weatherLastUpdated = new Date();
                     weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%<br>Vær neste time: ${data["Predicted_weather"]}`;
                 }
             })

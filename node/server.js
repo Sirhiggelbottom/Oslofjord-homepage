@@ -13,7 +13,14 @@ const port = 3000;
 const app = express();
 
 const baseURL = "http://localhost:3000";
-var weatherData = "";
+
+var weatherData = {
+    Average_temp : Number,
+    Average_wind : Number,
+    Average_rain : Number,
+    Average_cloud : Number,
+    Predicted_weather : ""
+};
 
 app.use(cors());
 
@@ -242,9 +249,6 @@ app.get('/images', async (req, res) => {
     });
 
     res.redirect(`${baseURL}/download-images`)
-
-    //res.json({images : links});
-    //res.send("Test")
 
 });
 
@@ -477,8 +481,8 @@ app.get(`/download-weather`, async (req, res) => {
 
         weatherData = await readWeatherData(weatherPath);
 
-        setInterval(downloadWeatherData, 300000);
-        setInterval(readWeatherData, 320000);
+        setInterval(() => downloadWeatherData(options, weatherPath, weatherDir), 300000);
+        setInterval(() => readWeatherData(weatherPath), 320000);
 
     } catch (e){
         console.error(`Error downloading weatherdata, reason:\n\n${e}`);
@@ -502,114 +506,6 @@ app.get('/get-weather', (req, res) => {
     }
     
 });
-
-/*app.get('/update-images', async (req, res) => {
-    
-    // Set credentials with the refresh token
-    oAuth2Client.setCredentials({
-        refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-    });
-
-
-    try {
-        try{
-            debug("Trying to get images");
-            // Use the Google Drive API to list folders
-            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-            
-            const response = await drive.files.list({
-                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
-                fields: 'nextPageToken, files(id, name, parents)',
-                spaces: 'drive',
-            });
-
-            debug("Trying to sort through response data");
-
-            response.data.files.forEach(function(file){
-
-                if (file.name.includes("Bilde_Elektro")){
-                    elektroBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug("Elektro bilde");
-                } else if (file.name.includes("Bilde_Renovasjon")){
-                    renoBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug("Reno bilde");
-                } else if (file.name.includes("Bilde_Bygg")){
-                    byggBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug("Bygg bilde");
-                } else {
-                    usorterteBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                }
-                
-                debug(`\nFound file.\nFile name: ${file.name}\nFile ID: ${file.id}\nParent folder: ${file.parents}\n`);
-
-            });
-
-            debug(`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
-        
-            const nyesteElektroBilde = getNewestImage(elektroBilder);
-            const nyesteRenoBilde = getNewestImage(renoBilder);
-            const nyesteByggBilde = getNewestImage(byggBilder);
-
-            process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
-            process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
-            process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
-
-            
-
-            debug(`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
-
-        } catch (e){
-            console.error('Error getting a response:', e);
-            res.status(500).send('Error getting response.');
-        }
-    
-    } catch (error) {
-        console.error('Error listing folders:', error);
-        res.status(500).send('Error listing folders.');
-    }
-
-    try{
-        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
-
-        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
-
-        const links = [];
-    
-        fileLinks.forEach(linkInfo => {
-            links.push(linkInfo.webContentLink);
-        });
-
-        const imageDir = path.join(__dirname, 'images');
-        ensureDirectoryExists(imageDir);
-
-        const downloadPromises = links.map((link, index) => {
-            const imagePath = path.join(imageDir, `image${index + 1}.png`);
-            return downloadImage(link, imagePath);
-        });
-
-        await Promise.all(downloadPromises);
-
-    } catch (e){
-        console.error(`Error while downloading images: ${e}`);
-        res.status(500).send("Error downloading images");
-    }
-
-    res.send("Images updated successfully");
-
-});*/
-
 
 function updateImages(){
     debug("Updating images");
