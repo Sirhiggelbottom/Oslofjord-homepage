@@ -19,7 +19,8 @@ var weatherData = {
     Average_wind : Number,
     Average_rain : Number,
     Average_cloud : Number,
-    Predicted_weather : ""
+    Predicted_weather : "",
+    Last_updated : "",
 };
 
 app.use(cors());
@@ -303,6 +304,7 @@ async function readWeatherData(weatherPath) {
     const weatherJSON = JSON.parse(weatherFile);
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
+    var lastUpdated = weatherJSON["properties"]["meta"]["units"]["updated_at"];
 
     var temperatures = [];
     var temperature;
@@ -321,6 +323,8 @@ async function readWeatherData(weatherPath) {
 
     var weatherTimeSeries = Object.keys(weatherValues);
     var timeSeriesLength = weatherTimeSeries.length;
+
+    
 
     debug(`Vær neste time: ${weatherValues[0]["data"]["next_1_hours"]["summary"]["symbol_code"]}`)
 
@@ -385,7 +389,7 @@ async function readWeatherData(weatherPath) {
 
     //return [avgTemp, avgWind, avgClouds, predicredWeather];
 
-    return {"Average_temp" : avgTemp, "Average_wind" : avgWind, "Average_rain": avgRain, "Average_cloud" : avgClouds, "Predicted_weather": predicredWeather};
+    return {"Average_temp" : avgTemp, "Average_wind" : avgWind, "Average_rain": avgRain, "Average_cloud" : avgClouds, "Predicted_weather": predicredWeather, "Last_updated" : lastUpdated};
     
 }
 
@@ -499,7 +503,8 @@ app.get('/get-weather', (req, res) => {
             Average_rain : "NaN",
             Average_wind : "NaN",
             Average_cloud : "NaN",
-            Predicted_weather : "NaN"
+            Predicted_weather : "NaN",
+            Last_updated : "NaN",
         });
     } else {
         res.json(weatherData);

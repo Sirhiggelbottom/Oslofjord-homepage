@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
     const cycledContent = document.getElementById('cycledContent');
-    const weatherLastUpdated = document.getElementById('last_updated');
 
     var weather_json;
     var hasUpdateImagesBeenRan = false;
@@ -32,9 +31,9 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(response => response.json())
             .then(data => {
                 //console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
-                if (!(data["Average_temp"] == "NaN" || data["Average_rain"] == "NaN" || data["Average_wind"] == "NaN" || data["Average_cloud"] == "NaN" || data["Predicted_weather"] == "NaN")){
-                    weatherLastUpdated = new Date();
-                    weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%<br>Vær neste time: ${data["Predicted_weather"]}`;
+                if (!(data["Average_temp"] == "NaN" || data["Average_rain"] == "NaN" || data["Average_wind"] == "NaN" || data["Average_cloud"] == "NaN" || data["Predicted_weather"] == "NaN" || data["Last_updated"] == "NaN")){
+                    const lastUpdated = new Date(data["Last_updated"]);
+                    weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%<br>Vær neste time: ${data["Predicted_weather"]}<br>Sist oppdatert: ${lastUpdated.toLocaleString()}`;
                 }
             })
             .catch((e) => {
