@@ -288,6 +288,12 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
             fs.writeFileSync(weatherPath, data, 'utf8');
             console.log(`Weather data downloaded to: ${weatherDir}`);
         });
+
+        if (res.statusCode === 429) {
+            console.error('Rate limit exceeded. Please try again later.');
+            req.end();
+            return null;
+        }
     
     });
 
@@ -296,6 +302,7 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     });
 
     req.end();
+    return "Ok";
 }
 
 async function readWeatherData(weatherPath) {
@@ -304,7 +311,8 @@ async function readWeatherData(weatherPath) {
     const weatherJSON = JSON.parse(weatherFile);
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
-    var lastUpdated = weatherJSON["properties"]["meta"]["units"]["updated_at"];
+    var lastUpdated = weatherJSON["properties"]["meta"]["updated_at"];
+    //console.log(`Vær sist oppdatert: ${lastUpdated}`);
 
     var temperatures = [];
     var temperature;
@@ -406,6 +414,18 @@ const ensureFileExists = (filePath) => {
     }
 }
 
+app.get('/list-images', (req, res) => {
+    const imagesPath = path.join(__dirname, 'images');
+    const imageFiles = fs.readdirSync(imagesPath);
+
+    if(imageFiles.length == 0){
+        console.error("The images hasn't been downloaded yet.");
+        res.status(500).send("The images hasn't been downloaded yet.");
+    } else {
+        res.send("Ok");
+    }
+});
+
 app.get('/images/:imageName', (req, res) => {
     const imageName = req.params.imageName;
     const imagePath = path.join(__dirname, 'images', imageName);
@@ -480,10 +500,13 @@ app.get(`/download-weather`, async (req, res) => {
         }
         
         //console.log("\nDownloading weather data\n");
-        await downloadWeatherData(options, weatherPath, weatherDir);
+        var weatherResponse = await downloadWeatherData(options, weatherPath, weatherDir);
         //console.log("Reading weather data")
 
-        weatherData = await readWeatherData(weatherPath);
+        if(weatherResponse != null){
+            weatherData = await readWeatherData(weatherPath);
+        }
+        
 
         setInterval(() => downloadWeatherData(options, weatherPath, weatherDir), 300000);
         setInterval(() => readWeatherData(weatherPath), 320000);
