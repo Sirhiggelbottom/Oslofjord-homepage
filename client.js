@@ -54,7 +54,8 @@ document.addEventListener("DOMContentLoaded", function () {
         { type: 'Vaktliste Elektro', url: 'http://localhost:3000/images/image1.png', tid: 15 },
         { type: 'Vaktliste Renovasjon', url: 'http://localhost:3000/images/image2.png', tid: 15 },
         { type: 'Vaktliste Bygg', url: 'http://localhost:3000/images/image3.png', tid: 15 },
-        { type: 'Telefon Vaktliste', url: 'http://localhost:3000/images/image4.png', tid: 10 },
+        { type: 'Telefon Vaktliste Nåværende Måned', url: 'http://localhost:3000/images/image4.png', tid: 10 },
+        { type: 'Telefon Vaktliste Neste Måned', url: 'http://localhost:3000/images/image5.png', tid: 10 },
     ];
 
     var lastUpdated;

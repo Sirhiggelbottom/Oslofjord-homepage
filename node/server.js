@@ -45,7 +45,8 @@ function debug(debugging, message){
 const elektroBilder  = {};
 const renoBilder = {};
 const byggBilder = {};
-const telefonvaktBilder = {};
+const telefonvaktBilder1 = {};
+const telefonvaktBilder2 = {};
 const usorterteBilder = {};
 
 // Root route to handle "/"
@@ -170,8 +171,14 @@ app.get('/list-folders', async (req, res) => {
                     };
                     debug(false,"Bygg bilde");
 
-                } else if(file.name.includes("Bilde_Telefonvakt")){
-                    telefonvaktBilder[file.name] = {
+                } else if(file.name.includes("Bilde_Telefonvakt_1")){
+                    telefonvaktBilder1[file.name] = {
+                        file_name : file.name,
+                        file_id: file.id
+                    };
+                    debug(false,"Bygg bilde");
+                } else if(file.name.includes("Bilde_Telefonvakt_2")){
+                    telefonvaktBilder2[file.name] = {
                         file_name : file.name,
                         file_id: file.id
                     };
@@ -192,16 +199,18 @@ app.get('/list-folders', async (req, res) => {
             const nyesteElektroBilde = getNewestImage(elektroBilder);
             const nyesteRenoBilde = getNewestImage(renoBilder);
             const nyesteByggBilde = getNewestImage(byggBilder);
-            const nyesteTelefonBilde = getNewestImage(telefonvaktBilder);
+            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
+            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
 
             process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
             process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
             process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
-            process.env.TELEFONBILDE = telefonvaktBilder[nyesteTelefonBilde].file_id;
+            process.env.TELEFONBILDE1 = telefonvaktBilder1[nyesteTelefonBilde1].file_id;
+            process.env.TELEFONBILDE2 = telefonvaktBilder2[nyesteTelefonBilde2].file_id;
 
-            debug(false, `\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\n Telefonvaktbilde Id: ${process.env.TELEFONBILDE}`);
+            debug(false, `\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\n Telefonvaktbilde 1 Id: ${process.env.TELEFONBILDE1}\n Telefonvaktbilde 2 Id: ${process.env.TELEFONBILDE2}`);
 
-            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}\nNyeste telefonvaktbilde: ${nyesteTelefonBilde}`);
+            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}\nNyeste telefonvaktbilde: ${nyesteTelefonBilde1}`);
 
             res.redirect(`${baseURL}/images`);
 
@@ -245,7 +254,7 @@ async function getImgLink(fileId){
 app.get('/images', async (req, res) => {
     const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
-    const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE];
+    const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
 
     debug(false,`\n\nFileIDs: ${fileIds}`);
 
@@ -443,7 +452,7 @@ app.get('/images/:imageName', (req, res) => {
 
 app.get('/download-images', async (req, res) => {
     try{
-        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE];
+        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
 
         const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
 
