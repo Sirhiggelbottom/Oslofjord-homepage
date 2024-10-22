@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const cycledContent = document.getElementById('cycledContent');
+    const currentContentHeader = document.getElementById('currentContentHeader');
     const weatherData = document.getElementById('weatherData');
     const lastUpdatedWeather = document.getElementById('lastUpdated');
     var cycleTime = 10000;
@@ -53,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
         { type: 'Vaktliste Elektro', url: 'http://localhost:3000/images/image1.png', tid: 15 },
         { type: 'Vaktliste Renovasjon', url: 'http://localhost:3000/images/image2.png', tid: 15 },
         { type: 'Vaktliste Bygg', url: 'http://localhost:3000/images/image3.png', tid: 15 },
-        
+        { type: 'Telefon Vaktliste', url: 'http://localhost:3000/images/image4.png', tid: 10 },
     ];
 
     var lastUpdated;
@@ -68,6 +69,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     lastUpdated = new Date();
                     weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%`;
                     lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
+                } else {
+                    weatherData.innerHTML = `Laster vær`;
                 }
             })
             .catch((e) => {
@@ -96,6 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
             cycledContent.innerHTML = `<iframe src="${currentContent.url}" style="width: 100%; height: 500px;"></iframe>`;
         } else {
             cycledContent.innerHTML = `<div style="display: flex; justify-content: center; align-items: center; height: 100%;"><img src="${currentContent.url}" alt="Image content" style="max-width: 100%; max-height: 100%;"></div>`;
+            currentContentHeader.innerHTML = currentContent.type;
         }
     
         currentIndex = (currentIndex + 1) % content.length;
