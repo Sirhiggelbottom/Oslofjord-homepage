@@ -545,7 +545,7 @@ async function readWeatherData(weatherPath) {
 
     //----------------------------------------------------------------------------------------------------------------------
 
-    debug(true,`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%`);
+    debug(false,`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%`);
 
     //return [avgTemp, avgWind, avgClouds, predicredWeather];
 
