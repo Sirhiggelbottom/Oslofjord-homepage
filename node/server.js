@@ -19,7 +19,11 @@ var weatherData = {
     Average_wind : Number,
     Average_rain : Number,
     Average_cloud : Number,
-    Predicted_weather : "",
+    Max_air_temp_6_hours : Number,
+    Min_air_temp_6_hours : Number,
+    Max_rain_6_hours : Number,
+    Min_rain_6_hours : Number,
+    Rain_probability_6_hours : Number,
     Last_updated : "",
 };
 
@@ -329,7 +333,6 @@ async function readWeatherData(weatherPath) {
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
     var lastUpdated = weatherJSON["properties"]["meta"]["updated_at"];
-    //console.log(`Vær sist oppdatert: ${lastUpdated}`);
 
     var temperatures = [];
     var temperature;
@@ -343,36 +346,70 @@ async function readWeatherData(weatherPath) {
     var cloudCoverages = [];
     var cloudCoverage;
 
-    var predictedWeathers = []
-    var predicredWeather;
+    var airTempsMaxNext6Hours = []
+    var airTempMaxNext6Hours;
 
-    var weatherTimeSeries = Object.keys(weatherValues);
-    var timeSeriesLength = weatherTimeSeries.length;
+    var airTempsMinNext6Hours = []
+    var airTempMinNext6Hours;
 
+    var maxRainsNext6Hours = [];
+    var maxRainNext6Hours;
+
+    var minRainsNext6Hours = [];
+    var minRainNext6Hours;
+
+    var rainProbabilitiesNext6Hours = []
+    var rainProbabilityNext6Hours;
     
+    var weatherTimeSeries = Object.keys(weatherValues);
+    var timeSeriesLength = weatherTimeSeries.length - 2;
 
-    debug(false,`Vær neste time: ${weatherValues[0]["data"]["next_1_hours"]["summary"]["symbol_code"]}`)
 
     for (let i = 0; i < timeSeriesLength; i++){
 
-        temperature = weatherValues[i]["data"]["instant"]["details"]["air_temperature"];
-        temperatures.push(temperature);
-        
-        windSpeed = weatherValues[i]["data"]["instant"]["details"]["wind_speed"];
-        windSpeeds.push(windSpeed);
+        try{
+            temperature = weatherValues[i]["data"]["instant"]["details"]["air_temperature"];
+            temperatures.push(temperature);
+            
+            windSpeed = weatherValues[i]["data"]["instant"]["details"]["wind_speed"];
+            windSpeeds.push(windSpeed);
 
-        rain = weatherValues[i]["data"]["next_1_hours"]["details"]["precipitation_amount"];
-        rains.push(rain);
+            rain = weatherValues[i]["data"]["next_1_hours"]["details"]["precipitation_amount"];
+            rains.push(rain);
 
-        cloudCoverage = weatherValues[i]["data"]["instant"]["details"]["cloud_area_fraction"];
-        cloudCoverages.push(cloudCoverage);
+            cloudCoverage = weatherValues[i]["data"]["instant"]["details"]["cloud_area_fraction"];
+            cloudCoverages.push(cloudCoverage);
 
-        predicredWeather = weatherValues[i]["data"]["next_1_hours"]["summary"]["symbol_code"];
-        predictedWeathers.push(predicredWeather);
+            airTempMaxNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["air_temperature_max"];
+            airTempsMaxNext6Hours.push(airTempMaxNext6Hours);
+
+            airTempMinNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["air_temperature_min"];
+            airTempsMinNext6Hours.push(airTempMinNext6Hours);
+
+            maxRainNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["precipitation_amount_max"];
+            maxRainsNext6Hours.push(maxRainNext6Hours);
+
+            minRainNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["precipitation_amount_min"];
+            minRainsNext6Hours.push(minRainNext6Hours);
+
+            rainProbabilityNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["probability_of_precipitation"];
+            rainProbabilitiesNext6Hours.push(rainProbabilityNext6Hours);
+
+        } catch(e){
+
+            continue;
+
+        }
 
     }
 
-    predicredWeather = predictedWeathers[(predictedWeathers.length) - 1]
+    if(temperatures.length < 1 || windSpeeds.length < 1 || rains.length < 1 || cloudCoverages.length < 1) {
+        console.error("Error, instant values not defined");
+    }
+
+    // Current Air Temp
+    
+    //----------------------------------------------------------------------------------------------------------------------
 
     var sumTemp = 0;
     var avgTemp = 0;
@@ -383,6 +420,12 @@ async function readWeatherData(weatherPath) {
 
     avgTemp = (sumTemp / temperatures.length).toFixed(1);
 
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Current Wind Speed
+    
+    //----------------------------------------------------------------------------------------------------------------------
+
     var sumWind = 0;
     var avgWind = 0;
 
@@ -390,8 +433,18 @@ async function readWeatherData(weatherPath) {
         sumWind += wind;
     });
 
+    avgWind = (sumWind / windSpeeds.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Current Rainpour
+
+    //----------------------------------------------------------------------------------------------------------------------
+
     var sumRain = 0;
     var avgRain = 0;
+
+    
 
     rains.forEach((rain) => {
         sumRain += rain;
@@ -399,7 +452,11 @@ async function readWeatherData(weatherPath) {
 
     avgRain = (sumRain / rains.length).toFixed(1);
 
-    avgWind = (sumWind / windSpeeds.length).toFixed(1);
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Current Cloudcoverage
+
+    //----------------------------------------------------------------------------------------------------------------------
 
     var sumClouds = 0;
     var avgClouds = 0;
@@ -410,11 +467,104 @@ async function readWeatherData(weatherPath) {
 
     avgClouds = (sumClouds / cloudCoverages.length).toFixed(1);
 
-    debug(false,`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%\nPredicted Weather: ${predicredWeather}`);
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Max Air Temp Next 6 Hours
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    var sumMaxAirTempNext6Hours = 0;
+    var avgMaxAirTempNext6Hours = 0;
+
+    airTempsMaxNext6Hours.forEach((temp) => {
+        sumMaxAirTempNext6Hours += temp;
+    });
+
+    avgMaxAirTempNext6Hours = (sumMaxAirTempNext6Hours / airTempsMaxNext6Hours.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Min Air Temp Next 6 Hours
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    var sumMinAirTempNext6Hours = 0;
+    var avgMinAirTempNext6Hours = 0;
+
+    airTempsMinNext6Hours.forEach((temp) => {
+        sumMinAirTempNext6Hours += temp;
+    });
+
+    avgMinAirTempNext6Hours = (sumMinAirTempNext6Hours / airTempsMinNext6Hours.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Max Rainpour Next 6 Hours
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    
+    var sumMaxRainNext6Hours = 0;
+    var avgMaxRainNext6Hours = 0;
+
+    maxRainsNext6Hours.forEach((rain) => {
+        sumMaxRainNext6Hours += rain;
+    });
+
+    avgMaxRainNext6Hours = (sumMaxRainNext6Hours / maxRainsNext6Hours.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Min Rainpour Next 6 Hours
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    var sumMinRainNext6Hours = 0;
+    var avgMinRainNext6Hours = 0;
+
+    minRainsNext6Hours.forEach((rain) => {
+        sumMinRainNext6Hours += rain;
+    });
+
+    avgMinRainNext6Hours = (sumMinRainNext6Hours / minRainsNext6Hours.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    // Rain Probability Next 6 Hours
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    var sumRainProbabilityNext6Hours = 0;
+    var avgRainProbabilityNext6Hours = 0;
+
+    rainProbabilitiesNext6Hours.forEach((rain) => {
+        sumRainProbabilityNext6Hours += rain;
+    });
+
+    avgRainProbabilityNext6Hours = (sumRainProbabilityNext6Hours / rainProbabilitiesNext6Hours.length).toFixed(1);
+
+    //----------------------------------------------------------------------------------------------------------------------
+
+    debug(true,`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%`);
 
     //return [avgTemp, avgWind, avgClouds, predicredWeather];
 
-    return {"Average_temp" : avgTemp, "Average_wind" : avgWind, "Average_rain": avgRain, "Average_cloud" : avgClouds, "Predicted_weather": predicredWeather, "Last_updated" : lastUpdated};
+    return {
+
+        "Average_temp" : avgTemp,
+        "Average_wind" : avgWind,
+        "Average_rain": avgRain,
+        "Average_cloud" : avgClouds,
+        "Max_air_temp_6_hours" : avgMaxAirTempNext6Hours,
+        "Min_air_temp_6_hours" : avgMinAirTempNext6Hours,
+        "Max_rain_6_hours" : avgMaxRainNext6Hours,
+        "Min_rain_6_hours" : avgMinRainNext6Hours,
+        "Rain_probability_6_hours" : avgRainProbabilityNext6Hours,
+        "Last_updated" : lastUpdated,
+
+    };
+
+    
     
 }
 
@@ -516,9 +666,9 @@ app.get(`/download-weather`, async (req, res) => {
             //console.log("Not using If-Modifed-Since variable");
         }
         
-        //console.log("\nDownloading weather data\n");
+        
         var weatherResponse = await downloadWeatherData(options, weatherPath, weatherDir);
-        //console.log("Reading weather data")
+        
 
         if(weatherResponse != null){
             weatherData = await readWeatherData(weatherPath);
@@ -543,7 +693,11 @@ app.get('/get-weather', (req, res) => {
             Average_rain : "NaN",
             Average_wind : "NaN",
             Average_cloud : "NaN",
-            Predicted_weather : "NaN",
+            Max_air_temp_6_hours : "NaN",
+            Min_air_temp_6_hours : "NaN",
+            Max_rain_6_hours : "NaN",
+            Min_rain_6_hours : "NaN",
+            Rain_probability_6_hours : "NaN",
             Last_updated : "NaN",
         });
     } else {

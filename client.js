@@ -59,16 +59,40 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
 
     var lastUpdated;
+    var temp;
+    var regn;
+    var vind;
+    var skyer;
+    var maksTemp6Timer;
+    var minTemp6Timer;
+    var maksRegn6Timer;
+    var minRegn6Timer;
+    var regnSannsynlighet;
 
     function getWeather(){
+
+        
 
         fetch('http://localhost:3000/get-weather')
             .then(response => response.json())
             .then(data => {
-                //console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
-                if (!(data["Average_temp"] == "NaN" || data["Average_rain"] == "NaN" || data["Average_wind"] == "NaN" || data["Average_cloud"] == "NaN" || data["Predicted_weather"] == "NaN" || data["Last_updated"] == "NaN")){
+                console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
+                if (!(data["Average_temp"] == undefined || data["Average_rain"] == undefined || data["Average_wind"] == undefined || data["Average_cloud"] == undefined || data["Last_updated"] == undefined)){
                     lastUpdated = new Date();
-                    weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%`;
+
+                    
+
+                    temp = data["Average_temp"];
+                    regn = data["Average_rain"];
+                    vind = data["Average_wind"];
+                    skyer = data["Average_cloud"];
+                    maksTemp6Timer = data["Max_air_temp_6_hours"];
+                    minTemp6Timer = data["Min_air_temp_6_hours"];
+                    maksRegn6Timer = data["Max_rain_6_hours"];
+                    minRegn6Timer = data["Min_rain_6_hours"];
+                    regnSannsynlighet = data["Rain_probability_6_hours"];
+
+                    //weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%`;
                     lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
                 } else {
                     weatherData.innerHTML = `Laster vær`;
@@ -77,12 +101,16 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch((e) => {
                 console.error(`Error: ${e}`);
             });
+
     }
 
     setInterval(getWeather, 320000)
     getWeather();
 
-    let currentIndex = 0;
+    
+
+    var currentIndex = 0;
+    var currentWeatherIndex = 0;
 
     function cycleContent() {
 
@@ -90,9 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
             setTimeout(loadImages, 5000);
         }
 
-        const cycledContent = document.getElementById('cycledContent');
-        const contentQueue = document.getElementById('contentQueue');
-        
+        const cycledContent = document.getElementById('cycledContent');        
     
         const currentContent = content[currentIndex];
 
@@ -102,8 +128,15 @@ document.addEventListener("DOMContentLoaded", function () {
             cycledContent.innerHTML = `<div style="display: flex; justify-content: center; align-items: center; height: 100%;"><img src="${currentContent.url}" alt="Image content" style="max-width: 100%; max-height: 100%;"></div>`;
             currentContentHeader.innerHTML = currentContent.type;
         }
+
+        if (currentWeatherIndex < 1){
+            weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Regn: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+        } else {
+            weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer}-${maksTemp6Timer}°C<br>Regn: ${minRegn6Timer}-${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
+        }
     
         currentIndex = (currentIndex + 1) % content.length;
+        currentWeatherIndex = (currentWeatherIndex + 1) % 2;
 
     }
 
