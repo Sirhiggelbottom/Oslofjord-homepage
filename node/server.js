@@ -496,7 +496,7 @@ app.get(`/download-weather`, async (req, res) => {
         if(!lastModifed == ""){
             options = {
                 hostname: 'api.met.no',
-                path: '/weatherapi/locationforecast/2.0/mini.json?lat=59.22&lon=10.33',
+                path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
                 method: 'GET',
                 headers: {
                     'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
@@ -507,7 +507,7 @@ app.get(`/download-weather`, async (req, res) => {
         } else {
             options = {
                 hostname: 'api.met.no',
-                path: '/weatherapi/locationforecast/2.0/mini.json?lat=59.22&lon=10.33',
+                path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
                 method: 'GET',
                 headers: {
                     'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
