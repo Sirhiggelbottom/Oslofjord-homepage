@@ -122,17 +122,25 @@ app.get('/auth/check', async (req, res) => {
 
 app.get('/reauth', (req, res) => {
 
-    console.log("Authenticating");
+    try{
+        console.log("Authenticating");
 
-    const authUrl = oAuth2Client.generateAuthUrl({
-      access_type: 'offline', // To get a refresh token
-        scope: ['https://www.googleapis.com/auth/drive.readonly'],
-        prompt: 'consent',
-        redirect_uri: process.env.REDIRECT_URI,
+        const authUrl = oAuth2Client.generateAuthUrl({
+        access_type: 'offline', // To get a refresh token
+            scope: ['https://www.googleapis.com/auth/drive.readonly'],
+            prompt: 'consent',
+            redirect_uri: process.env.REDIRECT_URI,
 
-    });
-    process.env.AUTHURL = authUrl;
-    res.redirect(authUrl);
+        });
+        process.env.AUTHURL = authUrl;
+        res.redirect(authUrl);
+    } catch (error){
+        logError(error)
+        console.error('Error authenticating:', error);
+        res.status(500).send('Error checking the access token.');
+    }
+
+    
 });
 
 // Step 2: Handle the OAuth 2.0 callback and get the access token and refresh token
@@ -157,13 +165,13 @@ app.get('/auth/callback', async (req, res) => {
 
 // Step 3: Use the stored refresh token to get a new access token and access the Google Drive API
 app.get('/list-folders', async (req, res) => {
-    // Set credentials with the refresh token
-    oAuth2Client.setCredentials({
-      refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-    });
-
-
+    
     try {
+        // Set credentials with the refresh token
+        oAuth2Client.setCredentials({
+            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+        });
+
         try{
             debug(false,"Trying to get images");
             // Use the Google Drive API to list folders
@@ -265,54 +273,74 @@ function getNewestImage(obj){
 }
 
 async function getImgLink(fileId){
-    const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+    try {
+        const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
-    const res = await drive.files.get({
-        fileId : fileId,
-        fields: 'webViewLink, webContentLink',
-    });
+        const res = await drive.files.get({
+            fileId : fileId,
+            fields: 'webViewLink, webContentLink',
+        });
 
-    return {
-        fileId: fileId,
-        webViewLink: res.data.webViewLink,
-        webContentLink: res.data.webContentLink,
-    };
+        return {
+            fileId: fileId,
+            webViewLink: res.data.webViewLink,
+            webContentLink: res.data.webContentLink,
+        };
+    } catch (error){
+        logError(error)
+        console.error('Error getting Imagelinks:', error);
+    }
+
 }
 
 
 app.get('/images', async (req, res) => {
-    const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
-    const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
+    try{
+        const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
-    debug(false,`\n\nFileIDs: ${fileIds}`);
+        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
 
-    const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+        debug(false,`\n\nFileIDs: ${fileIds}`);
 
-    const links = [];
+        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+
+        const links = [];
+        
+        fileLinks.forEach(linkInfo => {
+            links.push(linkInfo.webContentLink);
+        });
+
+        res.redirect(`${baseURL}/download-images`)
+    } catch (error){
+        logError(error)
+        console.error('Error accessing images:', error);
+        res.status(500).send('Error listing folders.');
+    }
     
-    fileLinks.forEach(linkInfo => {
-        links.push(linkInfo.webContentLink);
-    });
-
-    res.redirect(`${baseURL}/download-images`)
 
 });
 
 const downloadImage = async (url, imagePath) => {
-    const writer = fs.createWriteStream(imagePath);
-    const res = await axios({
-        url,
-        method: 'GET',
-        responseType: 'stream'
-    });
+    try{
+        const writer = fs.createWriteStream(imagePath);
+        const res = await axios({
+            url,
+            method: 'GET',
+            responseType: 'stream'
+        });
 
-    res.data.pipe(writer);
+        res.data.pipe(writer);
 
-    return new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-    });
+        return new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
+    } catch (e){
+        logError(error)
+        console.error('Error downloading image:', error);
+    }
+    
 };
 
 var expires = "";
@@ -344,6 +372,7 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     });
 
     req.on('error', (e) => {
+        logError(error)
         console.error(`Error, couldn't process request.\nReason: ${e}`);
     });
 
@@ -590,7 +619,6 @@ async function readWeatherData(weatherPath) {
     };
 
     
-    
 }
 
 
@@ -744,12 +772,13 @@ function updateImages(){
     app.get('/update-images', async (req, res) => {
         debug(false,"Trying to download images");
         // Set credentials with the refresh token
-        oAuth2Client.setCredentials({
-            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-        });
-    
     
         try {
+
+            oAuth2Client.setCredentials({
+                refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+            });
+
             try{
                 debug(false,"Trying to get images");
                 // Use the Google Drive API to list folders
@@ -855,7 +884,21 @@ function updateImages(){
     
 }
 
+process.on('uncaughtException', (err) => {
+    logError(`Uncaught Exception: ${err.message}\n${err.stack}`);
+    // Optionally exit after logging to avoid an unstable state
+    process.exit(1);
+});
+  
+process.on('unhandledRejection', (reason, promise) => {
+    logError(`Unhandled Rejection: ${reason}`);
+    // Optionally exit after logging
+    process.exit(1);
+});
 
+process.on('exit', (code) => {
+    logError(`server.js process exited with code: ${code}`);
+});
 
 // Start the server
 app.listen(3000, () => {
