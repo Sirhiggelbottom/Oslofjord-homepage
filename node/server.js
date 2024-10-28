@@ -46,6 +46,27 @@ function debug(debugging, message){
     }
 }
 
+function logError(message){
+    const logDir = path.join(__dirname, 'logs');
+    const logFilePath = path.join(logDir, 'error.log');
+
+    // Ensure the logs directory exists
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir);
+    }
+
+    // Create the log message with timestamp
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ERROR: ${message}\n`;
+
+    // Append the error message to the log file
+    fs.appendFile(logFilePath, logMessage, (err) => {
+        if (err) {
+        console.error('Failed to write to the log file:', err);
+        }
+    });
+}
+
 const elektroBilder  = {};
 const renoBilder = {};
 const byggBilder = {};
@@ -92,6 +113,7 @@ app.get('/auth/check', async (req, res) => {
         debug(false,`Refresh token: ${tokens.refresh_token}`);
 
     } catch (error){
+        logError(error)
         console.error('Error checking the access token:', error);
         res.status(500).send('Error checking the access token.');
     }
@@ -127,6 +149,7 @@ app.get('/auth/callback', async (req, res) => {
 
         res.redirect(`${baseURL}/list-folders`);
     } catch (error) {
+        logError(error)
         console.error('Error retrieving access token:', error);
         res.status(500).send('Error retrieving access token.');
     }
@@ -219,11 +242,13 @@ app.get('/list-folders', async (req, res) => {
             res.redirect(`${baseURL}/images`);
 
         } catch (e){
+            logError(error)
             console.error('Error getting a response:', e);
             res.status(500).send('Error getting response.');
         }
     
     } catch (error) {
+        logError(error)
         console.error('Error listing folders:', error);
         res.status(500).send('Error listing folders.');
     }
@@ -627,6 +652,7 @@ app.get('/download-images', async (req, res) => {
         res.redirect(`${baseURL}/download-weather`);
 
     } catch (e){
+        logError(error)
         console.error(`Error while downloading images: ${e}`);
         res.status(500).send("Error downloading images");
     }
@@ -679,6 +705,7 @@ app.get(`/download-weather`, async (req, res) => {
         setInterval(() => readWeatherData(weatherPath), 320000);
 
     } catch (e){
+        logError(error)
         console.error(`Error downloading weatherdata, reason:\n\n${e}`);
     }
 
@@ -711,6 +738,7 @@ function updateImages(){
     
     fetch(`${baseURL}/update-images`).catch((e) => {
         console.error(`Error: ${e}`);
+        logError(error)
     });
 
     app.get('/update-images', async (req, res) => {
@@ -781,11 +809,13 @@ function updateImages(){
                 debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
     
             } catch (e){
+                logError(error)
                 console.error('Error getting a response:', e);
                 res.status(500).send('Error getting response.');
             }
         
         } catch (error) {
+            logError(error)
             console.error('Error listing folders:', error);
             res.status(500).send('Error listing folders.');
         }
@@ -812,6 +842,7 @@ function updateImages(){
             await Promise.all(downloadPromises);
     
         } catch (e){
+            logError(error)
             console.error(`Error while downloading images: ${e}`);
             res.status(500).send("Error downloading images");
         }
@@ -823,6 +854,8 @@ function updateImages(){
 
     
 }
+
+
 
 // Start the server
 app.listen(3000, () => {
