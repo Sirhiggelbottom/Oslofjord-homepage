@@ -337,7 +337,7 @@ const downloadImage = async (url, imagePath) => {
             writer.on('error', reject);
         });
     } catch (e){
-        logError(error)
+        logError(e)
         console.error('Error downloading image:', error);
     }
     
@@ -372,7 +372,7 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     });
 
     req.on('error', (e) => {
-        logError(error)
+        logError(e)
         console.error(`Error, couldn't process request.\nReason: ${e}`);
     });
 
@@ -680,7 +680,7 @@ app.get('/download-images', async (req, res) => {
         res.redirect(`${baseURL}/download-weather`);
 
     } catch (e){
-        logError(error)
+        logError(e)
         console.error(`Error while downloading images: ${e}`);
         res.status(500).send("Error downloading images");
     }
@@ -733,7 +733,7 @@ app.get(`/download-weather`, async (req, res) => {
         setInterval(() => readWeatherData(weatherPath), 320000);
 
     } catch (e){
-        logError(error)
+        logError(e)
         console.error(`Error downloading weatherdata, reason:\n\n${e}`);
     }
 
@@ -766,7 +766,7 @@ function updateImages(){
     
     fetch(`${baseURL}/update-images`).catch((e) => {
         console.error(`Error: ${e}`);
-        logError(error)
+        logError(e)
     });
 
     app.get('/update-images', async (req, res) => {
@@ -838,7 +838,7 @@ function updateImages(){
                 debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
     
             } catch (e){
-                logError(error)
+                logError(e)
                 console.error('Error getting a response:', e);
                 res.status(500).send('Error getting response.');
             }
@@ -871,7 +871,7 @@ function updateImages(){
             await Promise.all(downloadPromises);
     
         } catch (e){
-            logError(error)
+            logError(e)
             console.error(`Error while downloading images: ${e}`);
             res.status(500).send("Error downloading images");
         }
