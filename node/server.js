@@ -28,6 +28,7 @@ var weatherData = {
 };
 
 app.use(cors());
+app.use(express.json());
 
 // Load environment variables
 const authCheckURI = process.env.REDIRECT_URI_CHECK, reAuthURI = process.env.REDIRECT_URI_REAUTH, redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET, refreshToken = process.env.REFRESH_TOKEN;
@@ -44,6 +45,27 @@ function debug(debugging, message){
     if (debugging){
         console.log(`\n\n${message}\n\n`);
     }
+}
+
+function writeToLog(message){
+    const logDir = path.join(__dirname, 'logs');
+    const logFilePath = path.join(logDir, 'server.log');
+
+    // Ensure the logs directory exists
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir);
+    }
+
+    // Create the log message with timestamp
+    const timestamp = new Date().toISOString();
+    const logMessage = `\n[${timestamp}] Event: ${message}\n`;
+    
+    // Append the error message to the log file
+    fs.appendFile(logFilePath, logMessage, (err) => {
+        if (err) {
+        console.error('Failed to write to the log file:', err);
+        }
+    });
 }
 
 function logError(message){
@@ -113,7 +135,7 @@ app.get('/auth/check', async (req, res) => {
         debug(false,`Refresh token: ${tokens.refresh_token}`);
 
     } catch (error){
-        logError(error)
+        logError("Error authenticating: " + error)
         console.error('Error checking the access token:', error);
         res.status(500).send('Error checking the access token.');
     }
@@ -135,7 +157,7 @@ app.get('/reauth', (req, res) => {
         process.env.AUTHURL = authUrl;
         res.redirect(authUrl);
     } catch (error){
-        logError(error)
+        logError("Error reauthenticating: " + error)
         console.error('Error authenticating:', error);
         res.status(500).send('Error checking the access token.');
     }
@@ -157,7 +179,7 @@ app.get('/auth/callback', async (req, res) => {
 
         res.redirect(`${baseURL}/list-folders`);
     } catch (error) {
-        logError(error)
+        logError("Error retrieving access token: " + error)
         console.error('Error retrieving access token:', error);
         res.status(500).send('Error retrieving access token.');
     }
@@ -249,14 +271,14 @@ app.get('/list-folders', async (req, res) => {
 
             res.redirect(`${baseURL}/images`);
 
-        } catch (e){
-            logError(error)
-            console.error('Error getting a response:', e);
+        } catch (error){
+            logError("Error getting a response: " + error)
+            console.error('Error getting a response:', error);
             res.status(500).send('Error getting response.');
         }
     
     } catch (error) {
-        logError(error)
+        logError("Error listing folders: " + error)
         console.error('Error listing folders:', error);
         res.status(500).send('Error listing folders.');
     }
@@ -287,7 +309,7 @@ async function getImgLink(fileId){
             webContentLink: res.data.webContentLink,
         };
     } catch (error){
-        logError(error)
+        logError("Error getting Imagelinks: " + error)
         console.error('Error getting Imagelinks:', error);
     }
 
@@ -311,9 +333,10 @@ app.get('/images', async (req, res) => {
             links.push(linkInfo.webContentLink);
         });
 
+        //res.redirect(`${baseURL}`);
         res.redirect(`${baseURL}/download-images`)
     } catch (error){
-        logError(error)
+        logError("Error accessing images: " + error)
         console.error('Error accessing images:', error);
         res.status(500).send('Error listing folders.');
     }
@@ -336,8 +359,8 @@ const downloadImage = async (url, imagePath) => {
             writer.on('finish', resolve);
             writer.on('error', reject);
         });
-    } catch (e){
-        logError(e)
+    } catch (error){
+        logError("Error downloading image:" + error)
         console.error('Error downloading image:', error);
     }
     
@@ -371,9 +394,9 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     
     });
 
-    req.on('error', (e) => {
-        logError(e)
-        console.error(`Error, couldn't process request.\nReason: ${e}`);
+    req.on('error', (error) => {
+        logError("Error, couldn't process request: " + error)
+        console.error(`Error, couldn't process request.\nReason: ${error}`);
     });
 
     req.end();
@@ -386,7 +409,8 @@ async function readWeatherData(weatherPath) {
     const weatherJSON = JSON.parse(weatherFile);
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
-    var lastUpdated = weatherJSON["properties"]["meta"]["updated_at"];
+    const lastUpdated = new Date().toLocaleString('en-GB', { hour12: false });
+    //var lastUpdated = weatherJSON["properties"]["meta"]["updated_at"];
 
     var temperatures = [];
     var temperature;
@@ -449,7 +473,7 @@ async function readWeatherData(weatherPath) {
             rainProbabilityNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["probability_of_precipitation"];
             rainProbabilitiesNext6Hours.push(rainProbabilityNext6Hours);
 
-        } catch(e){
+        } catch(error){
 
             continue;
 
@@ -603,6 +627,8 @@ async function readWeatherData(weatherPath) {
 
     //return [avgTemp, avgWind, avgClouds, predicredWeather];
 
+    writeToLog("Weather downloaded");
+
     return {
 
         "Average_temp" : avgTemp,
@@ -677,11 +703,13 @@ app.get('/download-images', async (req, res) => {
 
         setInterval(updateImages, 3600000);
 
+        writeToLog("Images downloaded");
+
         res.redirect(`${baseURL}/download-weather`);
 
-    } catch (e){
-        logError(e)
-        console.error(`Error while downloading images: ${e}`);
+    } catch (error){
+        logError("Error while downloading images: " + error)
+        console.error(`Error while downloading images: ${error}`);
         res.status(500).send("Error downloading images");
     }
 });
@@ -697,7 +725,7 @@ app.get(`/download-weather`, async (req, res) => {
 
         var options;
 
-        if(!lastModifed == ""){
+        if(lastModifed != ""){
             options = {
                 hostname: 'api.met.no',
                 path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
@@ -719,7 +747,7 @@ app.get(`/download-weather`, async (req, res) => {
             };
             //console.log("Not using If-Modifed-Since variable");
         }
-        
+
         
         var weatherResponse = await downloadWeatherData(options, weatherPath, weatherDir);
         
@@ -730,43 +758,71 @@ app.get(`/download-weather`, async (req, res) => {
         
 
         setInterval(() => downloadWeatherData(options, weatherPath, weatherDir), 300000);
-        setInterval(() => readWeatherData(weatherPath), 320000);
+        setInterval(() => readWeatherData(weatherPath), 320000);        
 
-    } catch (e){
-        logError(e)
-        console.error(`Error downloading weatherdata, reason:\n\n${e}`);
+    } catch (error){
+        logError("Error saving weatherdata: " + error)
+        console.error(`Error saving weatherdata, reason:\n\n${error}`);
     }
 
     res.redirect(baseURL);
     
 });
 
-app.get('/get-weather', (req, res) => {
-    if(weatherData == ""){
+app.get('/get-weather', async(req, res) => {
+    
+    if(isWeatherDataInComplete(weatherData)){
+        writeToLog("Weatherdata doesn't exist");
+
         res.json({
-            Average_temp : "NaN",
-            Average_rain : "NaN",
-            Average_wind : "NaN",
-            Average_cloud : "NaN",
-            Max_air_temp_6_hours : "NaN",
-            Min_air_temp_6_hours : "NaN",
-            Max_rain_6_hours : "NaN",
-            Min_rain_6_hours : "NaN",
-            Rain_probability_6_hours : "NaN",
-            Last_updated : "NaN",
+            Average_temp : undefined,
+            Average_rain : undefined,
+            Average_wind : undefined,
+            Average_cloud : undefined,
+            Max_air_temp_6_hours : undefined,
+            Min_air_temp_6_hours : undefined,
+            Max_rain_6_hours : undefined,
+            Min_rain_6_hours : undefined,
+            Rain_probability_6_hours : undefined,
+            Last_updated : undefined,
         });
+
+
     } else {
         res.json(weatherData);
     }
     
 });
 
+
+app.post('/log-error', (req, res) => {
+    
+    try{
+
+        const {message} = req.body;
+
+        logError("Client error: " + message);
+        //logError(`client error: ${Object.keys(req)}`);
+
+        res.json({message: 'Data received successfully', received: message});
+
+    } catch (error){
+        logError("Error when logging errors from client: " + error);
+    }
+    
+});
+
+function isWeatherDataInComplete(weatherData){
+    return Object.values(weatherData).some(value => value === undefined || value === null);
+}
+
 function updateImages(){
+
     debug(false,"Updating images");
     
-    fetch(`${baseURL}/update-images`).catch((e) => {
-        console.error(`Error: ${e}`);
-        logError(e)
+    fetch(`${baseURL}/update-images`).catch((error) => {
+        console.error(`Error: ${error}`);
+        logError("Error updating images" + error)
     });
 
     app.get('/update-images', async (req, res) => {
@@ -837,14 +893,14 @@ function updateImages(){
     
                 debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
     
-            } catch (e){
-                logError(e)
-                console.error('Error getting a response:', e);
+            } catch (error){
+                logError("Error getting a response: " + error)
+                console.error('Error getting a response:', error);
                 res.status(500).send('Error getting response.');
             }
         
         } catch (error) {
-            logError(error)
+            logError("Error listing folders: " + error)
             console.error('Error listing folders:', error);
             res.status(500).send('Error listing folders.');
         }
@@ -870,9 +926,9 @@ function updateImages(){
     
             await Promise.all(downloadPromises);
     
-        } catch (e){
-            logError(e)
-            console.error(`Error while downloading images: ${e}`);
+        } catch (error){
+            logError("Error while downloading images: " + error)
+            console.error(`Error while downloading images: ${error}`);
             res.status(500).send("Error downloading images");
         }
     
@@ -881,8 +937,9 @@ function updateImages(){
     
     });
 
-    
+    writeToLog("Images updated");
 }
+
 
 process.on('uncaughtException', (err) => {
     logError(`Uncaught Exception: ${err.message}\n${err.stack}`);

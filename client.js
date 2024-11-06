@@ -40,7 +40,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     
 
-    setTimeout(loadImages, 30000);
+    setInterval(loadImages, 3600000);
+    loadImages();
     
     const elektroBilde = new Image();
     const renoBilde = new Image();
@@ -70,8 +71,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var regnSannsynlighet;
 
     function getWeather(){
-
-        
 
         fetch('http://localhost:3000/get-weather')
             .then(response => response.json())
