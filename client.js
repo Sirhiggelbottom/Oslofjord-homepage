@@ -129,9 +129,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (currentWeatherIndex < 1){
-            weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Regn: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+            weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
         } else {
-            weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer}-${maksTemp6Timer}°C<br>Regn: ${minRegn6Timer}-${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
+            weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer} - ${maksTemp6Timer}°C<br>Nedbør: ${minRegn6Timer} - ${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
         }
     
         currentIndex = (currentIndex + 1) % content.length;
