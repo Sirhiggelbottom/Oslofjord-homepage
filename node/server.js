@@ -12,7 +12,22 @@ const { hostname } = require('os');
 const port = 3000;
 const app = express();
 
+app.use(cors());
+app.use(express.json());
+
 const baseURL = "http://localhost:3000";
+
+const ensureDirectoryExists = (dir)  => {
+    if(!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, {recursive: true});
+    }
+}
+
+const ensureFileExists = (filePath) => {
+    if(!fs.existsSync(filePath)){
+        fs.writeFileSync(filePath, "");
+    }
+}
 
 var weatherData = {
     Average_temp : Number,
@@ -26,9 +41,6 @@ var weatherData = {
     Rain_probability_6_hours : Number,
     Last_updated : "",
 };
-
-app.use(cors());
-app.use(express.json());
 
 // Load environment variables
 const authCheckURI = process.env.REDIRECT_URI_CHECK, reAuthURI = process.env.REDIRECT_URI_REAUTH, redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET, refreshToken = process.env.REFRESH_TOKEN;
@@ -369,7 +381,17 @@ const downloadImage = async (url, imagePath) => {
 var expires = "";
 var lastModifed = "";
 
-async function downloadWeatherData(options, weatherPath, weatherDir){
+async function downloadWeatherData(weatherPath){
+
+    var options = {
+            hostname: 'api.met.no',
+            path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
+            method: 'GET',
+            headers: {
+                'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
+            }
+        };
+
     const req = https.request(options, (res) => {
         let data = '';
     
@@ -383,7 +405,6 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     
         res.on('end', () => {
             fs.writeFileSync(weatherPath, data, 'utf8');
-            console.log(`Weather data downloaded to: ${weatherDir}`);
         });
 
         if (res.statusCode === 429) {
@@ -397,237 +418,75 @@ async function downloadWeatherData(options, weatherPath, weatherDir){
     req.on('error', (error) => {
         logError("Error, couldn't process request: " + error)
         console.error(`Error, couldn't process request.\nReason: ${error}`);
+        return null;
     });
 
     req.end();
+    writeToLog("Weather downloaded");
     return "Ok";
 }
 
-async function readWeatherData(weatherPath) {
-    const weatherFile = fs.readFileSync(weatherPath);
+function getWeatherFile(weatherPath){
+    try{
+        const weatherFile = fs.readFileSync(weatherPath);
 
-    const weatherJSON = JSON.parse(weatherFile);
+        return JSON.parse(weatherFile);
+
+    } catch(error){
+        logError(`Error loading weatherFile, reason: ${error}`);
+        return null;
+    }
+}
+
+async function readWeatherData(weatherPath) {
+
+    const weatherJSON = await getWeatherFile(weatherPath);
+    
+    if (weatherJSON == null){
+        writeToLog("WeatherData is empty");
+        return;
+    }
+
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
     const lastUpdated = new Date().toLocaleString('en-GB', { hour12: false });
-    //var lastUpdated = weatherJSON["properties"]["meta"]["updated_at"];
-
-    var temperatures = [];
-    var temperature;
-
-    var windSpeeds = [];
-    var windSpeed;
-
-    var rains = [];
-    var rain;
-
-    var cloudCoverages = [];
-    var cloudCoverage;
-
-    var airTempsMaxNext6Hours = []
-    var airTempMaxNext6Hours;
-
-    var airTempsMinNext6Hours = []
-    var airTempMinNext6Hours;
-
-    var maxRainsNext6Hours = [];
-    var maxRainNext6Hours;
-
-    var minRainsNext6Hours = [];
-    var minRainNext6Hours;
-
-    var rainProbabilitiesNext6Hours = []
-    var rainProbabilityNext6Hours;
     
-    var weatherTimeSeries = Object.keys(weatherValues);
-    var timeSeriesLength = weatherTimeSeries.length - 2;
-
-
-    for (let i = 0; i < timeSeriesLength; i++){
-
-        try{
-            temperature = weatherValues[i]["data"]["instant"]["details"]["air_temperature"];
-            temperatures.push(temperature);
-            
-            windSpeed = weatherValues[i]["data"]["instant"]["details"]["wind_speed"];
-            windSpeeds.push(windSpeed);
-
-            rain = weatherValues[i]["data"]["next_1_hours"]["details"]["precipitation_amount"];
-            rains.push(rain);
-
-            cloudCoverage = weatherValues[i]["data"]["instant"]["details"]["cloud_area_fraction"];
-            cloudCoverages.push(cloudCoverage);
-
-            airTempMaxNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["air_temperature_max"];
-            airTempsMaxNext6Hours.push(airTempMaxNext6Hours);
-
-            airTempMinNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["air_temperature_min"];
-            airTempsMinNext6Hours.push(airTempMinNext6Hours);
-
-            maxRainNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["precipitation_amount_max"];
-            maxRainsNext6Hours.push(maxRainNext6Hours);
-
-            minRainNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["precipitation_amount_min"];
-            minRainsNext6Hours.push(minRainNext6Hours);
-
-            rainProbabilityNext6Hours =  weatherValues[i]["data"]["next_6_hours"]["details"]["probability_of_precipitation"];
-            rainProbabilitiesNext6Hours.push(rainProbabilityNext6Hours);
-
-        } catch(error){
-
-            continue;
-
+    function getAverageWeatherValue(category, dataKey) {
+        const values = weatherValues
+            .map(weather => {
+                try {
+                    return weather["data"][category]["details"][dataKey];
+                } catch (error) {
+                    return undefined;
+                }
+            })
+            .filter(value => value !== undefined);
+    
+        if (values.length === 0) {
+            return "No data available";
         }
-
+    
+        const avgValue = (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
+        return avgValue;
     }
 
-    if(temperatures.length < 1 || windSpeeds.length < 1 || rains.length < 1 || cloudCoverages.length < 1) {
-        console.error("Error, instant values not defined");
-    }
+    const avgTemp = getAverageWeatherValue("instant", "air_temperature");
 
-    // Current Air Temp
-    
-    //----------------------------------------------------------------------------------------------------------------------
+    const avgWind = getAverageWeatherValue("instant", "wind_speed");
 
-    var sumTemp = 0;
-    var avgTemp = 0;
+    const avgRain = getAverageWeatherValue("next_1_hours", "precipitation_amount");
 
-    temperatures.forEach((temperature) => {
-        sumTemp += temperature;
-    });
+    const avgClouds = getAverageWeatherValue("instant", "cloud_area_fraction");
 
-    avgTemp = (sumTemp / temperatures.length).toFixed(1);
+    const avgMaxAirTempNext6Hours = getAverageWeatherValue("next_6_hours", "air_temperature_max");
 
-    //----------------------------------------------------------------------------------------------------------------------
+    const avgMinAirTempNext6Hours = getAverageWeatherValue("next_6_hours", "air_temperature_min");
 
-    // Current Wind Speed
-    
-    //----------------------------------------------------------------------------------------------------------------------
+    const avgMaxRainNext6Hours = getAverageWeatherValue("next_6_hours", "precipitation_amount_max");
 
-    var sumWind = 0;
-    var avgWind = 0;
+    const avgMinRainNext6Hours = getAverageWeatherValue("next_6_hours", "precipitation_amount_min");
 
-    windSpeeds.forEach((wind) => {
-        sumWind += wind;
-    });
-
-    avgWind = (sumWind / windSpeeds.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Current Rainpour
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumRain = 0;
-    var avgRain = 0;
-
-    
-
-    rains.forEach((rain) => {
-        sumRain += rain;
-    });
-
-    avgRain = (sumRain / rains.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Current Cloudcoverage
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumClouds = 0;
-    var avgClouds = 0;
-
-    cloudCoverages.forEach((cloud) => {
-        sumClouds += cloud;
-    });
-
-    avgClouds = (sumClouds / cloudCoverages.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Max Air Temp Next 6 Hours
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumMaxAirTempNext6Hours = 0;
-    var avgMaxAirTempNext6Hours = 0;
-
-    airTempsMaxNext6Hours.forEach((temp) => {
-        sumMaxAirTempNext6Hours += temp;
-    });
-
-    avgMaxAirTempNext6Hours = (sumMaxAirTempNext6Hours / airTempsMaxNext6Hours.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Min Air Temp Next 6 Hours
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumMinAirTempNext6Hours = 0;
-    var avgMinAirTempNext6Hours = 0;
-
-    airTempsMinNext6Hours.forEach((temp) => {
-        sumMinAirTempNext6Hours += temp;
-    });
-
-    avgMinAirTempNext6Hours = (sumMinAirTempNext6Hours / airTempsMinNext6Hours.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Max Rainpour Next 6 Hours
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    
-    var sumMaxRainNext6Hours = 0;
-    var avgMaxRainNext6Hours = 0;
-
-    maxRainsNext6Hours.forEach((rain) => {
-        sumMaxRainNext6Hours += rain;
-    });
-
-    avgMaxRainNext6Hours = (sumMaxRainNext6Hours / maxRainsNext6Hours.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Min Rainpour Next 6 Hours
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumMinRainNext6Hours = 0;
-    var avgMinRainNext6Hours = 0;
-
-    minRainsNext6Hours.forEach((rain) => {
-        sumMinRainNext6Hours += rain;
-    });
-
-    avgMinRainNext6Hours = (sumMinRainNext6Hours / minRainsNext6Hours.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    // Rain Probability Next 6 Hours
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    var sumRainProbabilityNext6Hours = 0;
-    var avgRainProbabilityNext6Hours = 0;
-
-    rainProbabilitiesNext6Hours.forEach((rain) => {
-        sumRainProbabilityNext6Hours += rain;
-    });
-
-    avgRainProbabilityNext6Hours = (sumRainProbabilityNext6Hours / rainProbabilitiesNext6Hours.length).toFixed(1);
-
-    //----------------------------------------------------------------------------------------------------------------------
-
-    debug(false,`Average temp: ${avgTemp} Celsius\nAverage wind: ${avgWind} m/s\nAverage cloudcoverage: ${avgClouds}%`);
-
-    //return [avgTemp, avgWind, avgClouds, predicredWeather];
-
-    writeToLog("Weather downloaded");
+    const avgRainProbabilityNext6Hours = getAverageWeatherValue("next_6_hours", "probability_of_precipitation");
 
     return {
 
@@ -645,19 +504,6 @@ async function readWeatherData(weatherPath) {
     };
 
     
-}
-
-
-const ensureDirectoryExists = (dir)  => {
-    if(!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, {recursive: true});
-    }
-}
-
-const ensureFileExists = (filePath) => {
-    if(!fs.existsSync(filePath)){
-        fs.writeFileSync(filePath, "");
-    }
 }
 
 app.get('/list-images', (req, res) => {
@@ -722,43 +568,25 @@ app.get(`/download-weather`, async (req, res) => {
 
         const weatherPath = path.join(weatherDir, `WeatherData.json`);
         ensureFileExists(weatherPath);
-
-        var options;
-
-        if(lastModifed != ""){
-            options = {
-                hostname: 'api.met.no',
-                path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
-                method: 'GET',
-                headers: {
-                    'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
-                    'If-Modified-Since': lastModifed
-                }
-            };
-            //console.log("Using If-Modifed-Since variable");
-        } else {
-            options = {
-                hostname: 'api.met.no',
-                path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
-                method: 'GET',
-                headers: {
-                    'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
-                }
-            };
-            //console.log("Not using If-Modifed-Since variable");
-        }
-
         
-        var weatherResponse = await downloadWeatherData(options, weatherPath, weatherDir);
+        var weatherResponse = await downloadWeatherData(weatherPath);
         
 
         if(weatherResponse != null){
-            weatherData = await readWeatherData(weatherPath);
+            //setTimeout(async () => { weatherData = await readWeatherData(weatherPath); }, 500);
+            setTimeout(async () => {
+                weatherData = await readWeatherData(weatherPath)
+            }, 500);
+            
         }
         
 
-        setInterval(() => downloadWeatherData(options, weatherPath, weatherDir), 300000);
-        setInterval(() => readWeatherData(weatherPath), 320000);        
+        setInterval(() => downloadWeatherData(weatherPath), 300000);
+        
+        /*setInterval(() => {
+            weatherData = readWeatherData(weatherPath)
+        }, 320000);*/
+        
 
     } catch (error){
         logError("Error saving weatherdata: " + error)
@@ -769,10 +597,14 @@ app.get(`/download-weather`, async (req, res) => {
     
 });
 
-app.get('/get-weather', async(req, res) => {
+app.get('/get-weather', async (req, res) => {
+    let weatherPath = path.join(__dirname, 'weather', 'WeatherData.json');
+
+    weatherData = await readWeatherData(weatherPath);
     
     if(isWeatherDataInComplete(weatherData)){
-        writeToLog("Weatherdata doesn't exist");
+        
+        //writeToLog("WeatherData not present");
 
         res.json({
             Average_temp : undefined,
@@ -789,7 +621,10 @@ app.get('/get-weather', async(req, res) => {
 
 
     } else {
+        
         res.json(weatherData);
+
+        //writeToLog("WeatherData sent to client");
     }
     
 });

@@ -6,6 +6,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var cycleTime = 10000;
 
     var hasImagesBeenLoaded = false;
+    var hasWeatherBeenLoaded = false;
+
+    var lastUpdated;
+    var temp;
+    var regn;
+    var vind;
+    var skyer;
+    var maksTemp6Timer;
+    var minTemp6Timer;
+    var maksRegn6Timer;
+    var minRegn6Timer;
+    var regnSannsynlighet;
 
     // Display current date and time
     function updateDateTime() {
@@ -34,52 +46,31 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch((e) => {
                 hasImagesBeenLoaded = false;
                 console.log(`Images not loaded: ${e}`);
+                clearInterval(imagesIntervalID)
+                return;
             });
 
     }
 
-    
-
-    setInterval(loadImages, 3600000);
+    const imagesIntervalID = setInterval(loadImages, 3600000);
     loadImages();
     
-    const elektroBilde = new Image();
-    const renoBilde = new Image();
-    const byggBilde = new Image();
     
-    //{ type: 'Superoffice', url: 'https://service.oslofjord.com/scripts/ticket.fcgi?_sf=0&action=mainMenu', tid: 5 },
-    //{ type: 'System Status', url: 'https://prtg-oslofjord.msappproxy.net/public/mapshow.htm?id=55027&mapid=807498E5-9B2F-4986-959F-8F62EBB7C6E9', tid: 5 },
 
-    // Content cycling logic
-    const content = [
-        { type: 'Vaktliste Elektro', url: 'http://localhost:3000/images/image1.png', tid: 15 },
-        { type: 'Vaktliste Renovasjon', url: 'http://localhost:3000/images/image2.png', tid: 15 },
-        { type: 'Vaktliste Bygg', url: 'http://localhost:3000/images/image3.png', tid: 15 },
-        { type: 'Telefon Vaktliste Nåværende Måned', url: 'http://localhost:3000/images/image4.png', tid: 10 },
-        { type: 'Telefon Vaktliste Neste Måned', url: 'http://localhost:3000/images/image5.png', tid: 10 },
-    ];
-
-    var lastUpdated;
-    var temp;
-    var regn;
-    var vind;
-    var skyer;
-    var maksTemp6Timer;
-    var minTemp6Timer;
-    var maksRegn6Timer;
-    var minRegn6Timer;
-    var regnSannsynlighet;
+    let isWeatherLoading = false;
 
     function getWeather(){
+
+        if (isWeatherLoading) return;
+        isWeatherLoading = true;
 
         fetch('http://localhost:3000/get-weather')
             .then(response => response.json())
             .then(data => {
-                console.log(`Temperatur: ${data["Average_temp"]} Celsius\nRegn: ${data["Average_rain"]}mm\nVind: ${data["Average_wind"]}m/s\nSkydekke: ${data["Average_cloud"]}%\nVær neste time: ${data["Predicted_weather"]}`)
-                if (!(data["Average_temp"] == undefined || data["Average_rain"] == undefined || data["Average_wind"] == undefined || data["Average_cloud"] == undefined || data["Last_updated"] == undefined)){
-                    lastUpdated = new Date();
 
-                    
+                isWeatherLoading = false;
+                
+                if (data["Average_temp"] !== undefined && data["Average_rain"] !== undefined && data["Average_wind"] !== undefined && data["Average_cloud"] !== undefined && data["Last_updated"] !== undefined){
 
                     temp = data["Average_temp"];
                     regn = data["Average_rain"];
@@ -90,31 +81,44 @@ document.addEventListener("DOMContentLoaded", function () {
                     maksRegn6Timer = data["Max_rain_6_hours"];
                     minRegn6Timer = data["Min_rain_6_hours"];
                     regnSannsynlighet = data["Rain_probability_6_hours"];
+                    lastUpdated = data["Last_updated"];
 
-                    //weatherData.innerHTML = `Temperatur: ${data["Average_temp"]}°C<br>Regn: ${data["Average_rain"]}mm<br>Vind: ${data["Average_wind"]}m/s<br>Skydekke: ${data["Average_cloud"]}%`;
                     lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
+
                 } else {
                     weatherData.innerHTML = `Laster vær`;
                 }
             })
             .catch((e) => {
                 console.error(`Error: ${e}`);
+                isWeatherLoading = false;
             });
 
     }
-
-    setInterval(getWeather, 320000)
-    getWeather();
-
     
+    getWeather();
+    const weatherIntervalId = setInterval(getWeather, 600000);
 
     var currentIndex = 0;
     var currentWeatherIndex = 0;
 
+    const elektroBilde = new Image();
+    const renoBilde = new Image();
+    const byggBilde = new Image();
+
+    // Content cycling logic
+    const content = [
+        { type: 'Vaktliste Elektro', url: 'http://localhost:3000/images/image1.png', tid: 15 },
+        { type: 'Vaktliste Renovasjon', url: 'http://localhost:3000/images/image2.png', tid: 15 },
+        { type: 'Vaktliste Bygg', url: 'http://localhost:3000/images/image3.png', tid: 15 },
+        { type: 'Telefon Vaktliste Nåværende Måned', url: 'http://localhost:3000/images/image4.png', tid: 10 },
+        { type: 'Telefon Vaktliste Neste Måned', url: 'http://localhost:3000/images/image5.png', tid: 10 },
+    ];
+
     function cycleContent() {
 
         if(!hasImagesBeenLoaded){
-            setTimeout(loadImages, 5000);
+            setTimeout(loadImages, 1000);
         }
 
         const cycledContent = document.getElementById('cycledContent');        
@@ -128,18 +132,20 @@ document.addEventListener("DOMContentLoaded", function () {
             currentContentHeader.innerHTML = currentContent.type;
         }
 
-        if (currentWeatherIndex < 1){
-            weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+        if (lastUpdated != undefined){
+            if (currentWeatherIndex < 1){
+                weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+            } else {
+                weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer} - ${maksTemp6Timer}°C<br>Nedbør: ${minRegn6Timer} - ${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
+            }
         } else {
-            weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer} - ${maksTemp6Timer}°C<br>Nedbør: ${minRegn6Timer} - ${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
+            weatherData.innerHTML =`<h4>Laster Vær</4>`;
         }
     
         currentIndex = (currentIndex + 1) % content.length;
         currentWeatherIndex = (currentWeatherIndex + 1) % 2;
 
     }
-
-    
 
     setInterval(cycleContent, cycleTime);
     cycleContent();
