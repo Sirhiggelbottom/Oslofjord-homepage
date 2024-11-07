@@ -1,2 +1,6 @@
 *.xlsx
-*.json
+*.env
+*.log
+node_modules
+node/images
+node/weather

@@ -7,64 +7,119 @@
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
+    color: #333;
 }
 
 .container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 3fr;
-    gap: 10px;
-    padding: 20px;
+    grid-template-rows: auto auto;
+    gap: 30px; /* Increased gap between elements */
+    padding: 30px; /* Increased padding around the container */
+    width: auto;
+    
+    margin: 0 auto;
 }
 
-.top_boxes {
-    border: 2px solid black;
-    padding: 20px;
-    background-color: white;
-    position: relative;
-    overflow: auto;
-    height: 200px;
-}
-
+.top_boxes,
 .bottom_boxes {
-    border: 2px solid black;
-    padding: 20px;
+    border-radius: 10px; /* Increased border-radius */
+    padding: 30px; /* Increased padding inside boxes */
     background-color: white;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Increased shadow for depth */
     position: relative;
-    overflow: auto;
-    height: 800px;
+    overflow: hidden;
+    min-width: 800;
+}
+
+h2 {
+    font-size: 2em; /* Larger font size for headers */
+    color: #4a4a4a;
+    margin-bottom: 20px; /* Increased margin for spacing */
+    text-align: left; /* Align header to the left */
+    margin: 0;
+    padding: 20px;
+}
+
+.headerContainer {
+    display: flex;
+    align-items: center; /* Aligns headers vertically */
+    gap: 10px; /* Adds space between h2 and h3 */
+}
+
+/*h2 {
+    font-size: 2em;
+    color: #4a4a4a;
+    margin: 0;
+}*/
+
+#currentContentHeader {
+    font-size: 2em; /* Smaller font for h3 */
+    color: #4a4a4a;
+    margin: 0;
 }
 
 
 #dateTimeBox {
-    grid-column: 1 / span 1;
-    width: 500px;
-    box-sizing: content-box;
-    overflow: auto;
+    width: 1000px;
+    grid-column: 1 / span 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em; /* Increased font size */
 }
 
 #weatherBox {
-    grid-column: 2 / span 1;
+    width: 1000px;
+    grid-column: 4 / span 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 1.8em; /* Increased font size for weather info */
 }
 
 #contentBox {
-    grid-column: 1 / span 1;
-    width: 2000px;
-    box-sizing: content-box;
-    overflow: auto;
+    grid-column: 1 / span 4;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    height: auto;
+    min-height: 850px;
+    width: auto;
+    
 }
 
-#queueBox {
-    grid-column: 2 / span 1;
-    width: 400px;
-}
-
-#cycledContent {
+iframe {
+    width: 100%;
+    height: 600px; /* Increased height for the iframe */
     border: none;
-    padding: 20px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-top: 20px;
+}
+
+/* Additional styling for better readability */
+#cycledContent {
+    width: 100%;
+    padding: 0;
 }
 
 #weatherData {
-    border: none;
     padding: 20px;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+}
+
+#lastUpdated{
+    position: absolute;
+    bottom: 3px; /* Distance from the bottom */
+    right: 10px;  /* Distance from the right */
+    font-size: 0.75rem;
+    color: #333;
+    background-color: rgba(255, 255, 255, 0.8); /* Optional: translucent background */
+    padding: 5px 10px;
+    border-radius: 5px;
 }

@@ -3,39 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Content Dashboard</title>
+    <title>Status side</title>
+    <style>
+        body {
+            background-image: url('Background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+            margin: 0;
+        }
+    </style>
     <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="vaktplaner.js"></script>
-   
-
+    <script src="client.js" defer></script>
 </head>
-
 
 <body>
 
     <div class="container">
 
         <div class="top_boxes" id="dateTimeBox">
-            <h2>Date and Time</h2>
-            <div id="dateTime"></div>
+            <div id="dateTime">Loading Date & Time...</div>
         </div>
+        
         <div class="top_boxes" id="weatherBox">
-            <h2>Weather Forecast</h2>
-            <div id="weatherData"></div>
+            <div id="weatherData">Loading weather...</div>
+            <div id="lastUpdated"></div>
         </div>
 
         <div class="bottom_boxes" id="contentBox">
-            <h2>Content that is being cycled</h2>
-            <div id="cycledContent"></div>
-        </div>
-        <div class="bottom_boxes" id="queueBox">
-            <h2>Content Queue</h2>
-            <div id="contentQueue"></div>
+            <div class="headerContainer">
+                <h2>Informasjon:</h2>
+                <div id="currentContentHeader"></div>
+            </div>
+            
+            <div id="cycledContent">Loading content...</div>
         </div>
 
     </div>
 
 </body>
 </html>
+
