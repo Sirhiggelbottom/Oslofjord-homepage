@@ -332,7 +332,7 @@ function updateImages(){
     
                 });
     
-                debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
+                debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\n`);
             
                 const nyesteElektroBilde = getNewestImage(elektroBilder);
                 const nyesteRenoBilde = getNewestImage(renoBilder);
