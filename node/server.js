@@ -17,17 +17,13 @@ app.use(express.json());
 
 const baseURL = "http://localhost:3000";
 
-const ensureDirectoryExists = (dir)  => {
-    if(!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, {recursive: true});
-    }
-}
+// Load environment variables
+const redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET;
 
-const ensureFileExists = (filePath) => {
-    if(!fs.existsSync(filePath)){
-        fs.writeFileSync(filePath, "");
-    }
-}
+const elektroBilder  = {}, renoBilder = {}, byggBilder = {}, telefonvaktBilder1 = {}, telefonvaktBilder2 = {};
+
+// Create an OAuth2 client
+var oAuth2Client = new google.auth.OAuth2(clientID, clientSecret, redirectURI);
 
 var weatherData = {
     Average_temp : Number,
@@ -41,17 +37,6 @@ var weatherData = {
     Rain_probability_6_hours : Number,
     Last_updated : "",
 };
-
-// Load environment variables
-const authCheckURI = process.env.REDIRECT_URI_CHECK, reAuthURI = process.env.REDIRECT_URI_REAUTH, redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET, refreshToken = process.env.REFRESH_TOKEN;
-
-// Create an OAuth2 client
-var oAuth2Client = new google.auth.OAuth2(  
-    clientID,
-    clientSecret,
-    authCheckURI
-
-);
 
 function debug(debugging, message){
     if (debugging){
@@ -101,202 +86,6 @@ function logError(message){
     });
 }
 
-const elektroBilder  = {};
-const renoBilder = {};
-const byggBilder = {};
-const telefonvaktBilder1 = {};
-const telefonvaktBilder2 = {};
-const usorterteBilder = {};
-
-// Root route to handle "/"
-app.get('/', (req, res) => {
-    res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
-});
-
-// Step 1: Direct users to Google's OAuth 2.0 login page
-app.get('/auth', (req, res) => {
-    const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline', // To get a refresh token
-    scope: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/docs', 'https://www.googleapis.com/auth/drive.photos.readonly'],
-    redirect_uri: authCheckURI,
-    });
-
-    process.env.AUTHURL = authUrl;
-
-    res.redirect(authUrl);
-});
-
-app.get('/auth/check', async (req, res) => {
-    const code = req.query.code;
-    
-    try{
-        // Exchange the authorization code for an access token and refresh token
-        const { tokens } = await oAuth2Client.getToken(code);
-        oAuth2Client.setCredentials(tokens);
-
-        if (!tokens || !tokens.refresh_token){
-            oAuth2Client.redirectUri = redirectURI;
-            res.redirect(reAuthURI);
-        } else {
-            // Store the refresh token securely (e.g., in a database)
-            //oAuth2Client.redirectUri = authCheckURI
-            process.env.REFRESH_TOKEN = tokens.refresh_token;
-            res.redirect(redirectURI);
-        }
-
-        debug(false,`Refresh token: ${tokens.refresh_token}`);
-
-    } catch (error){
-        logError("Error authenticating: " + error)
-        console.error('Error checking the access token:', error);
-        res.status(500).send('Error checking the access token.');
-    }
-
-});
-
-app.get('/reauth', (req, res) => {
-
-    try{
-        console.log("Authenticating");
-
-        const authUrl = oAuth2Client.generateAuthUrl({
-        access_type: 'offline', // To get a refresh token
-            scope: ['https://www.googleapis.com/auth/drive.readonly'],
-            prompt: 'consent',
-            redirect_uri: process.env.REDIRECT_URI,
-
-        });
-        process.env.AUTHURL = authUrl;
-        res.redirect(authUrl);
-    } catch (error){
-        logError("Error reauthenticating: " + error)
-        console.error('Error authenticating:', error);
-        res.status(500).send('Error checking the access token.');
-    }
-
-    
-});
-
-// Step 2: Handle the OAuth 2.0 callback and get the access token and refresh token
-app.get('/auth/callback', async (req, res) => {
-    const code = req.query.code;
-
-    try {
-    // Exchange the authorization code for an access token and refresh token
-        const { tokens } = await oAuth2Client.getToken(code);
-        oAuth2Client.setCredentials(tokens);
-
-        // Store the refresh token securely (e.g., in a database)
-        process.env.REFRESH_TOKEN = tokens.refresh_token;
-
-        res.redirect(`${baseURL}/list-folders`);
-    } catch (error) {
-        logError("Error retrieving access token: " + error)
-        console.error('Error retrieving access token:', error);
-        res.status(500).send('Error retrieving access token.');
-    }
-});
-
-// Step 3: Use the stored refresh token to get a new access token and access the Google Drive API
-app.get('/list-folders', async (req, res) => {
-    
-    try {
-        // Set credentials with the refresh token
-        oAuth2Client.setCredentials({
-            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-        });
-
-        try{
-            debug(false,"Trying to get images");
-            // Use the Google Drive API to list folders
-            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-            
-            const response = await drive.files.list({
-                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
-                fields: 'nextPageToken, files(id, name, parents)',
-                spaces: 'drive',
-            });
-
-            debug(false,"Trying to sort through response data");
-
-            response.data.files.forEach(function(file){
-
-                if (file.name.includes("Bilde_Elektro")){
-                    elektroBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug(false,"Elektro bilde");
-                } else if (file.name.includes("Bilde_Renovasjon")){
-                    renoBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug(false,"Reno bilde");
-                } else if (file.name.includes("Bilde_Bygg")){
-                    byggBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug(false,"Bygg bilde");
-
-                } else if(file.name.includes("Bilde_Telefonvakt_1")){
-                    telefonvaktBilder1[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug(false,"Bygg bilde");
-                } else if(file.name.includes("Bilde_Telefonvakt_2")){
-                    telefonvaktBilder2[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                    debug(false,"Bygg bilde");
-                } else {
-                    usorterteBilder[file.name] = {
-                        file_name : file.name,
-                        file_id: file.id
-                    };
-                }
-                
-                debug(false,`\nFound file.\nFile name: ${file.name}\nFile ID: ${file.id}\nParent folder: ${file.parents}\n`);
-
-            });
-
-            debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
-        
-            const nyesteElektroBilde = getNewestImage(elektroBilder);
-            const nyesteRenoBilde = getNewestImage(renoBilder);
-            const nyesteByggBilde = getNewestImage(byggBilder);
-            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
-            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
-
-            process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
-            process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
-            process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
-            process.env.TELEFONBILDE1 = telefonvaktBilder1[nyesteTelefonBilde1].file_id;
-            process.env.TELEFONBILDE2 = telefonvaktBilder2[nyesteTelefonBilde2].file_id;
-
-            debug(false, `\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\n Telefonvaktbilde 1 Id: ${process.env.TELEFONBILDE1}\n Telefonvaktbilde 2 Id: ${process.env.TELEFONBILDE2}`);
-
-            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}\nNyeste telefonvaktbilde: ${nyesteTelefonBilde1}`);
-
-            res.redirect(`${baseURL}/images`);
-
-        } catch (error){
-            logError("Error getting a response: " + error)
-            console.error('Error getting a response:', error);
-            res.status(500).send('Error getting response.');
-        }
-    
-    } catch (error) {
-        logError("Error listing folders: " + error)
-        console.error('Error listing folders:', error);
-        res.status(500).send('Error listing folders.');
-    }
-});
-
-
 function getNewestImage(obj){    
     const images = Object.keys(obj);
     
@@ -327,34 +116,17 @@ async function getImgLink(fileId){
 
 }
 
-
-app.get('/images', async (req, res) => {
-
-    try{
-        const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-
-        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
-
-        debug(false,`\n\nFileIDs: ${fileIds}`);
-
-        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
-
-        const links = [];
-        
-        fileLinks.forEach(linkInfo => {
-            links.push(linkInfo.webContentLink);
-        });
-
-        //res.redirect(`${baseURL}`);
-        res.redirect(`${baseURL}/download-images`)
-    } catch (error){
-        logError("Error accessing images: " + error)
-        console.error('Error accessing images:', error);
-        res.status(500).send('Error listing folders.');
+const ensureDirectoryExists = (dir)  => {
+    if(!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, {recursive: true});
     }
-    
+}
 
-});
+const ensureFileExists = (filePath) => {
+    if(!fs.existsSync(filePath)){
+        fs.writeFileSync(filePath, "");
+    }
+}
 
 const downloadImage = async (url, imagePath) => {
     try{
@@ -377,9 +149,6 @@ const downloadImage = async (url, imagePath) => {
     }
     
 };
-
-var expires = "";
-var lastModifed = "";
 
 async function downloadWeatherData(weatherPath){
 
@@ -506,6 +275,243 @@ async function readWeatherData(weatherPath) {
     
 }
 
+function isWeatherDataInComplete(weatherData){
+    return Object.values(weatherData).some(value => value === undefined || value === null);
+}
+
+function updateImages(){
+
+    debug(false,"Updating images");
+    
+
+    app.get('/update-images', async (req, res) => {
+        debug(false,"Trying to download images");
+        // Set credentials with the refresh token
+    
+        try {
+
+            oAuth2Client.setCredentials({
+                refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+            });
+
+            try{
+                debug(false,"Trying to get images");
+                // Use the Google Drive API to list folders
+                const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+                
+                const response = await drive.files.list({
+                    q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
+                    fields: 'nextPageToken, files(id, name, parents)',
+                    spaces: 'drive',
+                });
+    
+                debug(false,"Trying to sort through response data");
+
+                const mapping = [
+                    {avd: "Bilde_Elektro", target: elektroBilder},
+                    {avd: "Bilde_Renovasjon", target: renoBilder},
+                    {avd: "Bilde_Bygg", target: byggBilder},
+                    {avd: "Bilde_Telefonvakt_1", target: telefonvaktBilder1},
+                    {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
+                ];
+    
+                response.data.files.forEach(function(file){
+
+                    for (let map of mapping){
+                        if (file.name.includes(map.avd)){
+                            map.target[file.name] = {
+                                file_name: file.name,
+                                file_id: file.id,
+                            };
+
+                            break;
+
+                        }
+    
+                    }
+    
+                });
+    
+                debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
+            
+                const nyesteElektroBilde = getNewestImage(elektroBilder);
+                const nyesteRenoBilde = getNewestImage(renoBilder);
+                const nyesteByggBilde = getNewestImage(byggBilder);
+    
+                process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
+                process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
+                process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
+    
+                
+    
+                debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
+    
+            } catch (error){
+                logError("Error getting a response: " + error)
+                console.error('Error getting a response:', error);
+                res.status(500).send('Error getting response.');
+            }
+        
+        } catch (error) {
+            logError("Error listing folders: " + error)
+            console.error('Error listing folders:', error);
+            res.status(500).send('Error listing folders.');
+        }
+    
+        try{
+            const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
+    
+            const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+    
+            const links = fileLinks.map(fileLink => fileLink.webContentLink);
+    
+            const imageDir = path.join(__dirname, 'images');
+            ensureDirectoryExists(imageDir);
+    
+            const downloadPromises = links.map((link, index) => {
+                const imagePath = path.join(imageDir, `image${index + 1}.png`);
+                return downloadImage(link, imagePath);
+            });
+    
+            await Promise.all(downloadPromises);
+    
+        } catch (error){
+            logError("Error while downloading images: " + error)
+            console.error(`Error while downloading images: ${error}`);
+            res.status(500).send("Error downloading images");
+        }
+    
+        res.send("Images updated successfully");
+        debug(false,"updateImages finished");
+    
+    });
+
+    fetch(`${baseURL}/update-images`).catch((error) => {
+        console.error(`Error: ${error}`);
+        logError("Error updating images" + error)
+    });
+
+    writeToLog("Images updated");
+}
+
+app.get('/', (req, res) => {
+    res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
+});
+
+app.get('/auth', (req, res) => {
+    const authUrl = oAuth2Client.generateAuthUrl({
+        access_type: 'offline', // To get a refresh token
+            scope: ['https://www.googleapis.com/auth/drive.readonly'],
+            prompt: 'consent',
+            redirect_uri: process.env.REDIRECT_URI,
+
+        });
+
+    process.env.AUTHURL = authUrl;
+
+    res.redirect(authUrl);
+});
+
+app.get('/auth/callback', async (req, res) => {
+    const code = req.query.code;
+
+    try {
+    // Exchange the authorization code for an access token and refresh token
+        const { tokens } = await oAuth2Client.getToken(code);
+        oAuth2Client.setCredentials(tokens);
+
+        // Store the refresh token securely (e.g., in a database)
+        process.env.REFRESH_TOKEN = tokens.refresh_token;
+
+        res.redirect(`${baseURL}/list-folders`);
+    } catch (error) {
+        logError("Error retrieving access token: " + error)
+        console.error('Error retrieving access token:', error);
+        res.status(500).send('Error retrieving access token.');
+    }
+});
+
+app.get('/list-folders', async (req, res) => {
+    
+    try {
+        // Set credentials with the refresh token
+        oAuth2Client.setCredentials({
+            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+        });
+
+        try{
+            debug(false,"Trying to get images");
+            // Use the Google Drive API to list folders
+            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+            
+            const response = await drive.files.list({
+                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
+                fields: 'nextPageToken, files(id, name, parents)',
+                spaces: 'drive',
+            });
+
+            debug(false,"Trying to sort through response data");
+
+            const mapping = [
+                {avd: "Bilde_Elektro", target: elektroBilder},
+                {avd: "Bilde_Renovasjon", target: renoBilder},
+                {avd: "Bilde_Bygg", target: byggBilder},
+                {avd: "Bilde_Telefonvakt_1", target: telefonvaktBilder1},
+                {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
+            ];
+            
+            debug(false, `antall filer: ${response.data.files.length}`);
+
+            response.data.files.forEach(function(file){
+
+                for (let map of mapping){
+                    if (file.name.includes(map.avd)){
+                        map.target[file.name] = {
+                            file_name: file.name,
+                            file_id: file.id,
+                        };
+                     
+                        break;
+
+                    }                    
+                }
+
+            });
+
+            debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}`);
+        
+            const nyesteElektroBilde = getNewestImage(elektroBilder);
+            const nyesteRenoBilde = getNewestImage(renoBilder);
+            const nyesteByggBilde = getNewestImage(byggBilder);
+            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
+            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
+
+            process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
+            process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
+            process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
+            process.env.TELEFONBILDE1 = telefonvaktBilder1[nyesteTelefonBilde1].file_id;
+            process.env.TELEFONBILDE2 = telefonvaktBilder2[nyesteTelefonBilde2].file_id;
+
+            debug(false,`\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\nTelefonvaktbilde 1 Id: ${process.env.TELEFONBILDE1}\nTelefonvaktbilde 2 Id: ${process.env.TELEFONBILDE2}`);
+            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}\nNyeste telefonvaktbilde: ${nyesteTelefonBilde1}`);
+
+            res.redirect(`${baseURL}/download-images`);
+
+        } catch (error){
+            logError("Error getting a response: " + error)
+            console.error('Error getting a response:', error);
+            res.redirect(baseURL);
+            //res.status(500).send('Error getting response.');
+        }
+    
+    } catch (error) {
+        logError("Error listing folders: " + error)
+        console.error('Error listing folders:', error);
+        res.redirect(baseURL);
+        //res.status(500).send('Error listing folders.');
+    }
+});
+
 app.get('/list-images', (req, res) => {
     const imagesPath = path.join(__dirname, 'images');
     const imageFiles = fs.readdirSync(imagesPath);
@@ -527,15 +533,13 @@ app.get('/images/:imageName', (req, res) => {
 
 app.get('/download-images', async (req, res) => {
     try{
+        const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+
         const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
 
         const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
 
-        const links = [];
-    
-        fileLinks.forEach(linkInfo => {
-            links.push(linkInfo.webContentLink);
-        });
+        const links = fileLinks.map(fileLink => fileLink.webContentLink);
 
         const imageDir = path.join(__dirname, 'images');
         ensureDirectoryExists(imageDir);
@@ -629,7 +633,6 @@ app.get('/get-weather', async (req, res) => {
     
 });
 
-
 app.post('/log-error', (req, res) => {
     
     try{
@@ -646,135 +649,6 @@ app.post('/log-error', (req, res) => {
     }
     
 });
-
-function isWeatherDataInComplete(weatherData){
-    return Object.values(weatherData).some(value => value === undefined || value === null);
-}
-
-function updateImages(){
-
-    debug(false,"Updating images");
-    
-    fetch(`${baseURL}/update-images`).catch((error) => {
-        console.error(`Error: ${error}`);
-        logError("Error updating images" + error)
-    });
-
-    app.get('/update-images', async (req, res) => {
-        debug(false,"Trying to download images");
-        // Set credentials with the refresh token
-    
-        try {
-
-            oAuth2Client.setCredentials({
-                refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-            });
-
-            try{
-                debug(false,"Trying to get images");
-                // Use the Google Drive API to list folders
-                const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-                
-                const response = await drive.files.list({
-                    q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
-                    fields: 'nextPageToken, files(id, name, parents)',
-                    spaces: 'drive',
-                });
-    
-                debug(false,"Trying to sort through response data");
-    
-                response.data.files.forEach(function(file){
-    
-                    if (file.name.includes("Bilde_Elektro")){
-                        elektroBilder[file.name] = {
-                            file_name : file.name,
-                            file_id: file.id
-                        };
-                        debug(false,"Elektro bilde");
-                    } else if (file.name.includes("Bilde_Renovasjon")){
-                        renoBilder[file.name] = {
-                            file_name : file.name,
-                            file_id: file.id
-                        };
-                        debug(false,"Reno bilde");
-                    } else if (file.name.includes("Bilde_Bygg")){
-                        byggBilder[file.name] = {
-                            file_name : file.name,
-                            file_id: file.id
-                        };
-                        debug(false,"Bygg bilde");
-                    } else {
-                        usorterteBilder[file.name] = {
-                            file_name : file.name,
-                            file_id: file.id
-                        };
-                    }
-                    
-                    debug(false,`\nFound file.\nFile name: ${file.name}\nFile ID: ${file.id}\nParent folder: ${file.parents}\n`);
-    
-                });
-    
-                debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\nAntall usorterte bilder: ${Object.keys(usorterteBilder).length}`)
-            
-                const nyesteElektroBilde = getNewestImage(elektroBilder);
-                const nyesteRenoBilde = getNewestImage(renoBilder);
-                const nyesteByggBilde = getNewestImage(byggBilder);
-    
-                process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
-                process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
-                process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
-    
-                
-    
-                debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
-    
-            } catch (error){
-                logError("Error getting a response: " + error)
-                console.error('Error getting a response:', error);
-                res.status(500).send('Error getting response.');
-            }
-        
-        } catch (error) {
-            logError("Error listing folders: " + error)
-            console.error('Error listing folders:', error);
-            res.status(500).send('Error listing folders.');
-        }
-    
-        try{
-            const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
-    
-            const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
-    
-            const links = [];
-        
-            fileLinks.forEach(linkInfo => {
-                links.push(linkInfo.webContentLink);
-            });
-    
-            const imageDir = path.join(__dirname, 'images');
-            ensureDirectoryExists(imageDir);
-    
-            const downloadPromises = links.map((link, index) => {
-                const imagePath = path.join(imageDir, `image${index + 1}.png`);
-                return downloadImage(link, imagePath);
-            });
-    
-            await Promise.all(downloadPromises);
-    
-        } catch (error){
-            logError("Error while downloading images: " + error)
-            console.error(`Error while downloading images: ${error}`);
-            res.status(500).send("Error downloading images");
-        }
-    
-        res.send("Images updated successfully");
-        debug(false,"updateImages finished");
-    
-    });
-
-    writeToLog("Images updated");
-}
-
 
 process.on('uncaughtException', (err) => {
     logError(`Uncaught Exception: ${err.message}\n${err.stack}`);
