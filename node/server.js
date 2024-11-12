@@ -17,6 +17,17 @@ app.use(express.json());
 
 const baseURL = "http://localhost:3000";
 
+const ensureDirectoryExists = (dir)  => {
+    if(!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, {recursive: true});
+    }
+}
+const ensureFileExists = (filePath) => {
+    if(!fs.existsSync(filePath)){
+        fs.writeFileSync(filePath, "");
+    }
+}
+
 // Load environment variables
 const redirectURI = process.env.REDIRECT_URI, clientID = process.env.CLIENT_ID, clientSecret = process.env.CLIENT_SECRET;
 
@@ -25,11 +36,27 @@ const elektroBilder  = {}, renoBilder = {}, byggBilder = {}, telefonvaktBilder1 
 // Create an OAuth2 client
 var oAuth2Client = new google.auth.OAuth2(clientID, clientSecret, redirectURI);
 
+const logDir = path.join(__dirname, 'logs');
+ensureDirectoryExists(logDir);
+
+const logFile = path.join(logDir, 'server.log');
+ensureFileExists(logFile);
+
+const errorFile = path.join(logDir, 'error.log');
+ensureFileExists(errorFile);
+
+const weatherDir = path.join(__dirname, 'weather');
+ensureDirectoryExists(weatherDir);
+
+const weatherPath = path.join(weatherDir, `WeatherData.json`);
+ensureFileExists(weatherPath);
+
 var weatherData = {
-    Average_temp : Number,
-    Average_wind : Number,
-    Average_rain : Number,
-    Average_cloud : Number,
+    Current_temp : Number,
+    Current_wind : Number,
+    Expected_rain : Number,
+    Current_cloud : Number,
+    Current_fog : Number,
     Max_air_temp_6_hours : Number,
     Min_air_temp_6_hours : Number,
     Max_rain_6_hours : Number,
@@ -54,8 +81,8 @@ function writeToLog(message){
     }
 
     // Create the log message with timestamp
-    const timestamp = new Date().toISOString();
-    const logMessage = `\n[${timestamp}] Event: ${message}\n`;
+    const timestamp = new Date().toLocaleString('en-GB', { hour12: false });
+    const logMessage = `[${timestamp}] Event: ${message}\n`;
     
     // Append the error message to the log file
     fs.appendFile(logFilePath, logMessage, (err) => {
@@ -75,7 +102,7 @@ function logError(message){
     }
 
     // Create the log message with timestamp
-    const timestamp = new Date().toISOString();
+    const timestamp = new Date().toLocaleString('en-GB', { hour12: false });
     const logMessage = `[${timestamp}] ERROR: ${message}\n`;
 
     // Append the error message to the log file
@@ -116,18 +143,6 @@ async function getImgLink(fileId){
 
 }
 
-const ensureDirectoryExists = (dir)  => {
-    if(!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, {recursive: true});
-    }
-}
-
-const ensureFileExists = (filePath) => {
-    if(!fs.existsSync(filePath)){
-        fs.writeFileSync(filePath, "");
-    }
-}
-
 const downloadImage = async (url, imagePath) => {
     try{
         const writer = fs.createWriteStream(imagePath);
@@ -154,7 +169,7 @@ async function downloadWeatherData(weatherPath){
 
     var options = {
             hostname: 'api.met.no',
-            path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.22&lon=10.33',
+            path: '/weatherapi/locationforecast/2.0/complete.json?lat=59.2297&lon=10.3624',
             method: 'GET',
             headers: {
                 'User-Agent' : 'WeatherData/1.0 (driftoslofjordhotell@gmail.com)',
@@ -207,6 +222,36 @@ function getWeatherFile(weatherPath){
     }
 }
 
+function getLastUpdated(weatherJSON){
+    var lastUpdated;
+    
+    try{
+        let isoDate = weatherJSON["properties"]["meta"]["updated_at"];
+        
+        if (isoDate == undefined){
+            throw new Error("Couldn't find a date in the weatherFile!");
+        }
+
+        let date = new Date(isoDate);
+        lastUpdated = date.toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+        });
+        
+    } catch (error){
+        lastUpdated = new Date().toLocaleString('en-GB', { hour12: false });
+        logError(`Error getting lastUpdated from weatherFile: ${error}`);
+    } finally {
+        return lastUpdated;
+    }
+
+}
+
 async function readWeatherData(weatherPath) {
 
     const weatherJSON = await getWeatherFile(weatherPath);
@@ -218,56 +263,77 @@ async function readWeatherData(weatherPath) {
 
     const coordinates = weatherJSON["geometry"]["coordinates"];
     const weatherValues = weatherJSON["properties"]["timeseries"];
-    const lastUpdated = new Date().toLocaleString('en-GB', { hour12: false });
-    
-    function getAverageWeatherValue(category, dataKey) {
+    const lastUpdated = getLastUpdated(weatherJSON);
+
+    function getNewestWeatherData(category, type){
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentDay = currentDate.getDate();
+        const currentHour = currentDate.getHours();
+
+        var timeseriesDate, timeseriesMonth, timeseriesDay, timeseriesHour;
+        
         const values = weatherValues
             .map(weather => {
-                try {
-                    return weather["data"][category]["details"][dataKey];
-                } catch (error) {
+                try{
+                    timeseriesDate = new Date(weather["time"]);
+                    timeseriesMonth = timeseriesDate.getMonth();
+                    timeseriesDay = timeseriesDate.getDate();
+                    timeseriesHour = timeseriesDate.getHours();
+
+                    
+                    if(timeseriesMonth == currentMonth && timeseriesDay == currentDay && timeseriesHour == currentHour){
+                        return weather["data"][category]["details"][type];
+                    } else {
+                        return undefined;
+                    }
+                } catch{
                     return undefined;
                 }
             })
             .filter(value => value !== undefined);
-    
-        if (values.length === 0) {
-            return "No data available";
-        }
-    
-        const avgValue = (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
-        return avgValue;
+        
+            if (values.length < 1){
+                logError(`Error no weatherData available for: ${type}`);
+            }
+        
+        return values[0];
     }
 
-    const avgTemp = getAverageWeatherValue("instant", "air_temperature");
+    const currTemp = getNewestWeatherData("instant", "air_temperature");
 
-    const avgWind = getAverageWeatherValue("instant", "wind_speed");
+    const currWind = getNewestWeatherData("instant", "wind_speed");
 
-    const avgRain = getAverageWeatherValue("next_1_hours", "precipitation_amount");
+    const exptRain = getNewestWeatherData("next_1_hours", "precipitation_amount");
 
-    const avgClouds = getAverageWeatherValue("instant", "cloud_area_fraction");
+    const currClouds = getNewestWeatherData("instant", "cloud_area_fraction");
 
-    const avgMaxAirTempNext6Hours = getAverageWeatherValue("next_6_hours", "air_temperature_max");
+    const currFog = getNewestWeatherData("instant", "fog_area_fraction");
 
-    const avgMinAirTempNext6Hours = getAverageWeatherValue("next_6_hours", "air_temperature_min");
+    const exptMaxAirTempNext6Hours = getNewestWeatherData("next_6_hours", "air_temperature_max");
 
-    const avgMaxRainNext6Hours = getAverageWeatherValue("next_6_hours", "precipitation_amount_max");
+    const exptMinAirTempNext6Hours = getNewestWeatherData("next_6_hours", "air_temperature_min");
 
-    const avgMinRainNext6Hours = getAverageWeatherValue("next_6_hours", "precipitation_amount_min");
+    const epxtMaxRainNext6Hours = getNewestWeatherData("next_6_hours", "precipitation_amount_max");
 
-    const avgRainProbabilityNext6Hours = getAverageWeatherValue("next_6_hours", "probability_of_precipitation");
+    const exptMinRainNext6Hours = getNewestWeatherData("next_6_hours", "precipitation_amount_min");
+
+    const exptRainProbabilityNext6Hours = getNewestWeatherData("next_6_hours", "probability_of_precipitation");
+
+    
 
     return {
 
-        "Average_temp" : avgTemp,
-        "Average_wind" : avgWind,
-        "Average_rain": avgRain,
-        "Average_cloud" : avgClouds,
-        "Max_air_temp_6_hours" : avgMaxAirTempNext6Hours,
-        "Min_air_temp_6_hours" : avgMinAirTempNext6Hours,
-        "Max_rain_6_hours" : avgMaxRainNext6Hours,
-        "Min_rain_6_hours" : avgMinRainNext6Hours,
-        "Rain_probability_6_hours" : avgRainProbabilityNext6Hours,
+        "Current_temp" : currTemp,
+        "Current_wind" : currWind,
+        "Expected_rain": exptRain,
+        "Current_cloud" : currClouds,
+        "Current_fog" : currFog,
+        "Max_air_temp_6_hours" : exptMaxAirTempNext6Hours,
+        "Min_air_temp_6_hours" : exptMinAirTempNext6Hours,
+        "Max_rain_6_hours" : epxtMaxRainNext6Hours,
+        "Min_rain_6_hours" : exptMinRainNext6Hours,
+        "Rain_probability_6_hours" : exptRainProbabilityNext6Hours,
         "Last_updated" : lastUpdated,
 
     };
@@ -567,11 +633,11 @@ app.get('/download-images', async (req, res) => {
 app.get(`/download-weather`, async (req, res) => {
 
     try{
-        const weatherDir = path.join(__dirname, 'weather');
+        /*const weatherDir = path.join(__dirname, 'weather');
         ensureDirectoryExists(weatherDir);
 
         const weatherPath = path.join(weatherDir, `WeatherData.json`);
-        ensureFileExists(weatherPath);
+        ensureFileExists(weatherPath);*/
         
         var weatherResponse = await downloadWeatherData(weatherPath);
         
@@ -609,12 +675,14 @@ app.get('/get-weather', async (req, res) => {
     if(isWeatherDataInComplete(weatherData)){
         
         //writeToLog("WeatherData not present");
+        
 
         res.json({
-            Average_temp : undefined,
-            Average_rain : undefined,
-            Average_wind : undefined,
-            Average_cloud : undefined,
+            Current_temp : undefined,
+            Expected_rain : undefined,
+            Current_wind : undefined,
+            Current_cloud : undefined,
+            Current_fog: undefined,
             Max_air_temp_6_hours : undefined,
             Min_air_temp_6_hours : undefined,
             Max_rain_6_hours : undefined,
@@ -627,7 +695,6 @@ app.get('/get-weather', async (req, res) => {
     } else {
         
         res.json(weatherData);
-
         //writeToLog("WeatherData sent to client");
     }
     
@@ -668,5 +735,5 @@ process.on('exit', (code) => {
 
 // Start the server
 app.listen(3000, () => {
-    console.log('Server running on http://localhost:3000');
+    console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000`);
 });

@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var regn;
     var vind;
     var skyer;
+    var taake;
     var maksTemp6Timer;
     var minTemp6Timer;
     var maksRegn6Timer;
@@ -70,12 +71,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 isWeatherLoading = false;
                 
-                if (data["Average_temp"] !== undefined && data["Average_rain"] !== undefined && data["Average_wind"] !== undefined && data["Average_cloud"] !== undefined && data["Last_updated"] !== undefined){
+                if (data["Last_updated"] !== undefined){
 
-                    temp = data["Average_temp"];
-                    regn = data["Average_rain"];
-                    vind = data["Average_wind"];
-                    skyer = data["Average_cloud"];
+                    temp = data["Current_temp"];
+                    regn = data["Expected_rain"];
+                    vind = data["Current_wind"];
+                    skyer = data["Current_cloud"];
+                    taake = data["Current_fog"];
                     maksTemp6Timer = data["Max_air_temp_6_hours"];
                     minTemp6Timer = data["Min_air_temp_6_hours"];
                     maksRegn6Timer = data["Max_rain_6_hours"];
@@ -85,8 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
 
-                } else {
-                    weatherData.innerHTML = `Laster vær`;
                 }
             })
             .catch((e) => {
@@ -125,19 +125,26 @@ document.addEventListener("DOMContentLoaded", function () {
     
         const currentContent = content[currentIndex];
 
-        if (currentContent.type == "System Status"){
-            cycledContent.innerHTML = `<iframe src="${currentContent.url}" style="width: 100%; height: 500px;"></iframe>`;
-        } else {
-            cycledContent.innerHTML = `<div style="display: flex; justify-content: center; align-items: center; height: 100%;"><img src="${currentContent.url}" alt="Image content" style="max-width: 100%; max-height: 100%;"></div>`;
-            currentContentHeader.innerHTML = currentContent.type;
-        }
+        cycledContent.innerHTML = `<div style="display: flex; justify-content: center; align-items: center; height: 100%;"><img src="${currentContent.url}" alt="Image content" style="max-width: 100%; max-height: 100%;"></div>`;
 
-        if (lastUpdated != undefined){
+        currentContentHeader.innerHTML = currentContent.type;
+
+        if (lastUpdated !== undefined){
             if (currentWeatherIndex < 1){
-                weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+
+                if (taake > 0){
+                    weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Tåke: ${taake}%`;
+                } else {
+                    weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
+                }
+
+                
             } else {
+
                 weatherData.innerHTML = `<h4>Vær neste 6 timer</h4><br>Temperatur: ${minTemp6Timer} - ${maksTemp6Timer}°C<br>Nedbør: ${minRegn6Timer} - ${maksRegn6Timer}mm<br>Sannsynlighet for regn: ${regnSannsynlighet}%`;
+
             }
+
         } else {
             weatherData.innerHTML =`<h4>Laster Vær</4>`;
         }
