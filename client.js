@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (lastUpdated !== undefined){
             if (currentWeatherIndex < 1){
 
-                if (taake > 0){
+                if (taake > 10){
                     weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Tåke: ${taake}%`;
                 } else {
                     weatherData.innerHTML = `<h4>Vær nå</h4><br>Temperatur: ${temp}°C<br>Nedbør: ${regn}mm<br>Vind: ${vind}m/s<br>Skydekke: ${skyer}%`;
