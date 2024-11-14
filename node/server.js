@@ -2,13 +2,11 @@
 require('dotenv').config({path: './auth.env'}); // Load environment variables
 const express = require('express');
 const { google } = require('googleapis');
-const { prod_tt_sasportal } = require('googleapis/build/src/apis/prod_tt_sasportal');
 const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const { hostname } = require('os');
 const port = 3000;
 const app = express();
 
@@ -51,6 +49,58 @@ ensureDirectoryExists(weatherDir);
 const weatherPath = path.join(weatherDir, `WeatherData.json`);
 ensureFileExists(weatherPath);
 
+function removeOldLogs(filePath){
+    // datevalue e.g: 12/11/2024, 17:50:14
+    try{
+
+        const fileName = path.basename(filePath);
+        const currentDate = new Date();
+
+        fs.readFileSync(logFile, 'utf8', (error, data) => {
+            if (error){
+                logError(`Error reading ${fileName}: ${error}`);
+                return;
+            }
+    
+            const logPattern = /\b\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}:\d{2}/g
+            // Split the log into individual lines
+            const logLines = data.split('\n');
+
+            // Filter out lines with dates older than the given threshold
+            const updatedLogLines = logLines.filter(line => {
+                const match = line.match(logPattern);
+                if (!match) return true; // If no date found, keep the line
+
+                const dateStr = match[0];
+                const [day, month, year] = dateStr.split("/");
+                const logDate = new Date(`${month}/${day}/${year}`);
+                const timeDiff = currentDate - logDate;
+
+                const differenceInDays = timeDiff / (24 * 60 * 60 * 1000);
+
+                // Keep only the logs that are not older than 30 days
+                return differenceInDays <= 30;
+            });
+
+            // Join the filtered log lines back into a string
+            const updatedData = updatedLogLines.join('\n');
+
+            // Write the updated content back to the file
+            try {
+                fs.writeFileSync(filePath, updatedData, 'utf8');
+                console.log(`Old logs removed successfully from ${fileName}`);
+            } catch (error) {
+                console.error(`Error writing to ${fileName}: ${error}`);
+            }
+    
+        });
+
+    } catch (error){
+        logError(`Error removing old logs from: ${fileName}: ${error}`);
+        return;
+    }
+    
+}
 var weatherData = {
     Current_temp : Number,
     Current_wind : Number,
@@ -72,20 +122,13 @@ function debug(debugging, message){
 }
 
 function writeToLog(message){
-    const logDir = path.join(__dirname, 'logs');
-    const logFilePath = path.join(logDir, 'server.log');
-
-    // Ensure the logs directory exists
-    if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir);
-    }
 
     // Create the log message with timestamp
     const timestamp = new Date().toLocaleString('en-GB', { hour12: false });
     const logMessage = `[${timestamp}] Event: ${message}\n`;
     
     // Append the error message to the log file
-    fs.appendFile(logFilePath, logMessage, (err) => {
+    fs.appendFile(logFile, logMessage, (err) => {
         if (err) {
         console.error('Failed to write to the log file:', err);
         }
@@ -93,20 +136,13 @@ function writeToLog(message){
 }
 
 function logError(message){
-    const logDir = path.join(__dirname, 'logs');
-    const logFilePath = path.join(logDir, 'error.log');
-
-    // Ensure the logs directory exists
-    if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir);
-    }
 
     // Create the log message with timestamp
     const timestamp = new Date().toLocaleString('en-GB', { hour12: false });
     const logMessage = `[${timestamp}] ERROR: ${message}\n`;
 
     // Append the error message to the log file
-    fs.appendFile(logFilePath, logMessage, (err) => {
+    fs.appendFile(errorFile, logMessage, (err) => {
         if (err) {
         console.error('Failed to write to the log file:', err);
         }
@@ -114,12 +150,16 @@ function logError(message){
 }
 
 function getNewestImage(obj){    
-    const images = Object.keys(obj);
+    const images = Object.values(obj);
+    try{
+        images.sort((a, b) => b.file_date - a.file_date);
+        debug(false, `Nyeste bilde: ${images[0]["file_name"]}`);
+        return images[0]["file_id"];
+    } catch (error){
+        logError(`Error sorting newest image: ${error}`);
+        return null;
+    }
     
-    images.sort((a, b) => b - a);
-    
-    return images[0];
-
 }
 
 async function getImgLink(fileId){
@@ -179,8 +219,8 @@ async function downloadWeatherData(weatherPath){
     const req = https.request(options, (res) => {
         let data = '';
     
-        expires = res.headers['expires'];
-        lastModifed = res.headers['last-modified'];
+        var expires = res.headers['expires'];
+        var lastModifed = res.headers['last-modified'];
         //console.log(`Expires header: ${expires}\nLast modified: ${lastModifed}`);
     
         res.on('data', (chunk) => {
@@ -528,13 +568,26 @@ app.get('/list-folders', async (req, res) => {
             
             debug(false, `antall filer: ${response.data.files.length}`);
 
+            var createdDate1;
+            var createdDate2;
+            var createdDate;
+
             response.data.files.forEach(function(file){
 
                 for (let map of mapping){
                     if (file.name.includes(map.avd)){
+                        
+                        createdDate1 = file.name.split(" ")[1];
+                        createdDate2 = file.name.split(" ")[2];
+                        var [day, month, year] = createdDate1.split("-");
+                        var [hour, minute] = createdDate2.split(":");
+                        
+                        createdDate = Date.parse(new Date(year, month, day, hour, minute));
+                        
                         map.target[file.name] = {
                             file_name: file.name,
                             file_id: file.id,
+                            file_date: createdDate,
                         };
                      
                         break;
@@ -544,7 +597,7 @@ app.get('/list-folders', async (req, res) => {
 
             });
 
-            debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}`);
+            debug(false,`Elektro bilder: ${Object.keys(elektroBilder)}\nRenovasjons bilder: ${Object.keys(renoBilder)}\nBygg bilder: ${Object.keys(byggBilder)}`);
         
             const nyesteElektroBilde = getNewestImage(elektroBilder);
             const nyesteRenoBilde = getNewestImage(renoBilder);
@@ -552,14 +605,13 @@ app.get('/list-folders', async (req, res) => {
             const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
             const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
 
-            process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
-            process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
-            process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
-            process.env.TELEFONBILDE1 = telefonvaktBilder1[nyesteTelefonBilde1].file_id;
-            process.env.TELEFONBILDE2 = telefonvaktBilder2[nyesteTelefonBilde2].file_id;
+            process.env.ELEKTROBILDE = nyesteElektroBilde;
+            process.env.RENOVASJONSBILDE = nyesteRenoBilde;
+            process.env.BYGGBILDE = nyesteByggBilde;
+            process.env.TELEFONBILDE1 = nyesteTelefonBilde1;
+            process.env.TELEFONBILDE2 = nyesteTelefonBilde2;
 
             debug(false,`\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\nTelefonvaktbilde 1 Id: ${process.env.TELEFONBILDE1}\nTelefonvaktbilde 2 Id: ${process.env.TELEFONBILDE2}`);
-            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}\nNyeste telefonvaktbilde: ${nyesteTelefonBilde1}`);
 
             res.redirect(`${baseURL}/download-images`);
 
@@ -735,5 +787,6 @@ process.on('exit', (code) => {
 
 // Start the server
 app.listen(3000, () => {
-    console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000`);
+    //removeOldLogs(logFile);
+    console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000\n`);
 });
