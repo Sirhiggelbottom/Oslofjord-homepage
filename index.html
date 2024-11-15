@@ -16,9 +16,17 @@
     </style>
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48x48.png">    
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48x48.png">
+
+    <img id="image1" src="" loading="lazy" alt="Image 1" style="display: none;">
+    <img id="image2" src="" loading="lazy" alt="Image 2" style="display: none;">
+    <img id="image3" src="" loading="lazy" alt="Image 3" style="display: none;">
+    <img id="image4" src="" loading="lazy" alt="Image 4" style="display: none;">
+    <img id="image5" src="" loading="lazy" alt="Image 5" style="display: none;">
+    
     <link rel="stylesheet" href="style.css">
     <script src="client.js" defer></script>
+
 </head>
 
 <body>
@@ -26,11 +34,11 @@
     <div class="container">
 
         <div class="top_boxes" id="dateTimeBox">
-            <div id="dateTime">Loading Date & Time...</div>
+            <div id="dateTime"></div>
         </div>
         
         <div class="top_boxes" id="weatherBox">
-            <div id="weatherData">Loading weather...</div>
+            <div id="weatherData"></div>
             <div id="lastUpdated"></div>
         </div>
 
@@ -39,8 +47,8 @@
                 <h2>Informasjon:</h2>
                 <div id="currentContentHeader"></div>
             </div>
-            <div id="cycledContent">Loading content...</div>
-            
+            <div id="cycledContentContainer"></div>
+
         </div>
 
     </div>

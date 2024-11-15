@@ -12,6 +12,7 @@ const app = express();
 const WebSocket = require('ws');
 const http = require('http');
 const { send } = require('process');
+const { Socket } = require('dgram');
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
@@ -22,6 +23,14 @@ app.use(cors());
 app.use(express.json());
 
 const baseURL = "http://localhost:3000";
+
+var imgUrls = [
+    '',
+    '',
+    '',
+    '',
+    ''
+];
 
 const ensureDirectoryExists = (dir)  => {
     if(!fs.existsSync(dir)) {
@@ -56,6 +65,14 @@ ensureDirectoryExists(weatherDir);
 
 const weatherPath = path.join(weatherDir, `WeatherData.json`);
 ensureFileExists(weatherPath);
+
+function sendUpdate(data){
+    clients.forEach(client => {
+        if(client.readyState === WebSocket.OPEN){
+            client.send(JSON.stringify(data));
+        }
+    });
+}
 
 function removeOldLogs(filePath){
     // datevalue e.g: 12/11/2024, 17:50:14
@@ -500,10 +517,16 @@ function updateImages(){
     
             const downloadPromises = links.map((link, index) => {
                 const imagePath = path.join(imageDir, `image${index + 1}.png`);
+                imgUrls[index + 1] = `http://localhost:3000/images/image${index + 1}.png`;
                 return downloadImage(link, imagePath);
             });
     
             await Promise.all(downloadPromises);
+
+            sendUpdate({type: "images", data: imgUrls});
+
+            res.send("Images updated successfully");
+            debug(false,"updateImages finished");
     
         } catch (error){
             logError("Error while downloading images: " + error)
@@ -511,8 +534,6 @@ function updateImages(){
             res.status(500).send("Error downloading images");
         }
     
-        res.send("Images updated successfully");
-        debug(false,"updateImages finished");
     
     });
 
@@ -522,15 +543,10 @@ function updateImages(){
     });
 
     writeToLog("Images updated");
+
 }
 
-function sendUpdate(data){
-    clients.forEach(client => {
-        if(client.readyState === WebSocket.OPEN){
-            client.send(JSON.stringify(data));
-        }
-    });
-}
+
 
 app.get('/', (req, res) => {
     res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
@@ -696,6 +712,7 @@ app.get('/download-images', async (req, res) => {
 
         const downloadPromises = links.map((link, index) => {
             const imagePath = path.join(imageDir, `image${index + 1}.png`);
+            imgUrls[index] = `http://localhost:3000/images/image${index + 1}.png`;
             return downloadImage(link, imagePath);
         });
 
@@ -740,20 +757,17 @@ app.get(`/download-weather`, async (req, res) => {
         
         setInterval(async () => {
             weatherData = await readWeatherData(weatherPath);
-            sendUpdate(weatherData);
         }, 305000);
-        
-        /*setInterval(() => {
-            weatherData = readWeatherData(weatherPath)
-        }, 320000);*/
         
 
     } catch (error){
         logError("Error saving weatherdata: " + error)
         console.error(`Error saving weatherdata, reason:\n\n${error}`);
+    } finally {
+        res.redirect(baseURL);
     }
 
-    res.redirect(baseURL);
+    
     
 });
 
@@ -830,11 +844,47 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
+        var message;
 
        switch(data.type){
-            case "update":
-                sendUpdate(weatherData);
+
+            case "load":
+
+                switch(data.message){
+
+                    case "images":
+                        message = {type: "initial_images", data: imgUrls};
+                        sendUpdate(message);
+                        break;
+
+                    case "weather":
+                        message = {type: "initial_weather", data: weatherData};
+                        sendUpdate(message);
+                        break;
+                }
+        
+            case "weather":
+                message = {type: "weather", data: weatherData};
+                sendUpdate(message);
+                //sendUpdate(weatherData);
                 break;
+
+            case "images":
+                message = {type: "images", data: imgUrls};
+                sendUpdate(message);
+                break;
+
+            case "connection":
+                message = {type: "initial_images", data: imgUrls};
+                sendUpdate(message);
+                
+                setTimeout(() => {
+                    message = {type: "initial_weather", data: weatherData};
+                    sendUpdate(message);
+                }, 200);
+
+                break;
+
         }
     });
 
