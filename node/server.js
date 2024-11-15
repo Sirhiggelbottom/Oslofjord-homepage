@@ -9,6 +9,14 @@ const path = require('path');
 const https = require('https');
 const port = 3000;
 const app = express();
+const WebSocket = require('ws');
+const http = require('http');
+const { send } = require('process');
+
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
+
+let clients = [];
 
 app.use(cors());
 app.use(express.json());
@@ -421,21 +429,33 @@ function updateImages(){
                     {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
                 ];
     
+                var createdDate1;
+                var createdDate2;
+                var createdDate;
+
                 response.data.files.forEach(function(file){
 
                     for (let map of mapping){
                         if (file.name.includes(map.avd)){
+                            
+                            createdDate1 = file.name.split(" ")[1];
+                            createdDate2 = file.name.split(" ")[2];
+                            var [day, month, year] = createdDate1.split("-");
+                            var [hour, minute] = createdDate2.split(":");
+                            
+                            createdDate = Date.parse(new Date(year, month, day, hour, minute));
+                            
                             map.target[file.name] = {
                                 file_name: file.name,
                                 file_id: file.id,
+                                file_date: createdDate,
                             };
-
+                        
                             break;
 
-                        }
-    
+                        }                    
                     }
-    
+
                 });
     
                 debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\n`);
@@ -443,10 +463,14 @@ function updateImages(){
                 const nyesteElektroBilde = getNewestImage(elektroBilder);
                 const nyesteRenoBilde = getNewestImage(renoBilder);
                 const nyesteByggBilde = getNewestImage(byggBilder);
-    
-                process.env.ELEKTROBILDE = elektroBilder[nyesteElektroBilde].file_id;
-                process.env.RENOVASJONSBILDE = renoBilder[nyesteRenoBilde].file_id;
-                process.env.BYGGBILDE = byggBilder[nyesteByggBilde].file_id;
+                const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
+                const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
+
+                process.env.ELEKTROBILDE = nyesteElektroBilde;
+                process.env.RENOVASJONSBILDE = nyesteRenoBilde;
+                process.env.BYGGBILDE = nyesteByggBilde;
+                process.env.TELEFONBILDE1 = nyesteTelefonBilde1;
+                process.env.TELEFONBILDE2 = nyesteTelefonBilde2;
     
                 
     
@@ -465,7 +489,7 @@ function updateImages(){
         }
     
         try{
-            const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE]
+            const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2]
     
             const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
     
@@ -498,6 +522,14 @@ function updateImages(){
     });
 
     writeToLog("Images updated");
+}
+
+function sendUpdate(data){
+    clients.forEach(client => {
+        if(client.readyState === WebSocket.OPEN){
+            client.send(JSON.stringify(data));
+        }
+    });
 }
 
 app.get('/', (req, res) => {
@@ -697,13 +729,19 @@ app.get(`/download-weather`, async (req, res) => {
         if(weatherResponse != null){
             //setTimeout(async () => { weatherData = await readWeatherData(weatherPath); }, 500);
             setTimeout(async () => {
-                weatherData = await readWeatherData(weatherPath)
+                weatherData = await readWeatherData(weatherPath);
+                sendUpdate(weatherData);
             }, 500);
             
         }
         
 
         setInterval(() => downloadWeatherData(weatherPath), 300000);
+        
+        setInterval(async () => {
+            weatherData = await readWeatherData(weatherPath);
+            sendUpdate(weatherData);
+        }, 305000);
         
         /*setInterval(() => {
             weatherData = readWeatherData(weatherPath)
@@ -785,8 +823,32 @@ process.on('exit', (code) => {
     logError(`server.js process exited with code: ${code}`);
 });
 
+
+
+wss.on('connection', (ws) => {
+    clients.push(ws);
+
+    ws.on('message', (message) => {
+        const data = JSON.parse(message);
+
+       switch(data.type){
+            case "update":
+                sendUpdate(weatherData);
+                break;
+        }
+    });
+
+    ws.on('close', () => {
+        clients = clients.filter(client => client !== ws);
+    });
+})
+
 // Start the server
 app.listen(3000, () => {
     //removeOldLogs(logFile);
     console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000\n`);
+});
+
+server.listen(3001, () => {
+    console.log(`Websocket started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on ws://localhost:3001\n`);
 });

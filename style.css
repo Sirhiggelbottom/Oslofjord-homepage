@@ -32,7 +32,7 @@ h2 {
 .top_boxes,
 .bottom_boxes {
     border-radius: 10px; /* Increased border-radius */
-    padding: 30px; /* Increased padding inside boxes */
+    padding: 40px; /* Increased padding inside boxes */
     background-color: white;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Increased shadow for depth */
     position: relative;
@@ -40,7 +40,7 @@ h2 {
 }
 
 #dateTimeBox {
-    width: 1000px;
+    width: 800px;
     grid-column: 1 / span 3;
     display: flex;
     align-items: center;
@@ -49,7 +49,7 @@ h2 {
 }
 
 #weatherBox {
-    width: 1000px;
+    width: 800px;
     grid-column: 4 / span 1;
     display: flex;
     flex-direction: column;
@@ -60,6 +60,8 @@ h2 {
 }
 
 #weatherData {
+    min-width: 385px;
+    min-height: 240px;
     padding: 20px;
     background-color: #f0f0f0;
     border-radius: 8px;
@@ -68,7 +70,7 @@ h2 {
 #lastUpdated{
     position: absolute;
     bottom: 3px; /* Distance from the bottom */
-    right: 10px;  /* Distance from the right */
+    left: 10px;  /* Distance from the right */
     font-size: 0.75rem;
     color: #333;
     background-color: rgba(255, 255, 255, 0.8); /* Optional: translucent background */
@@ -105,8 +107,6 @@ h2 {
     color: #4a4a4a;
     margin: 0;
 }
-
-
 
 iframe {
     width: 100%;
