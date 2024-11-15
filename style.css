@@ -21,7 +21,7 @@ h2 {
 
 .container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     grid-template-rows: auto auto;
     gap: 30px; /* Increased gap between elements */
     padding: 30px; /* Increased padding around the container */
@@ -86,6 +86,8 @@ h2 {
     justify-content: flex-start;
     align-items: flex-start;
     min-height: 850px;
+    max-width: 100%;
+    overflow-x: auto;
         
 }
 
