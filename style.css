@@ -142,3 +142,14 @@ iframe {
     height: fit-content;
     display: none; /* Initially hidden, will be displayed during cycling */
 }
+
+#lastUpdate{
+    position: absolute;
+    bottom: 3px; /* Distance from the bottom */
+    left: 20px;  /* Distance from the right */
+    font-size: 0.75rem;
+    color: #333;
+    background-color: rgba(255, 255, 255, 0.8); /* Optional: translucent background */
+    padding: 5px 10px;
+    border-radius: 5px;
+}

@@ -385,10 +385,6 @@ async function readWeatherData(weatherPath) {
 
     const exptRainProbabilityNext6Hours = getNewestWeatherData("next_6_hours", "probability_of_precipitation");
 
-    setTimeout(() => {
-        sendUpdate({type: "weather", data: weatherData});
-    }, 2000);
-
     return {
 
         "Current_temp" : currTemp,
@@ -525,7 +521,7 @@ function updateImages(){
     
             await Promise.all(downloadPromises);
 
-            sendUpdate({type: "images", data: imgUrls});
+            sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })});
 
             res.send("Images updated successfully");
             debug(false,"updateImages finished");
@@ -547,8 +543,6 @@ function updateImages(){
     writeToLog("Images updated");
 
 }
-
-
 
 app.get('/', (req, res) => {
     res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
@@ -722,6 +716,8 @@ app.get('/download-images', async (req, res) => {
 
         setInterval(updateImages, 3600000);
 
+        sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })});
+
         writeToLog("Images downloaded");
 
         res.redirect(`${baseURL}/download-weather`);
@@ -736,30 +732,25 @@ app.get('/download-images', async (req, res) => {
 app.get(`/download-weather`, async (req, res) => {
 
     try{
-        /*const weatherDir = path.join(__dirname, 'weather');
-        ensureDirectoryExists(weatherDir);
-
-        const weatherPath = path.join(weatherDir, `WeatherData.json`);
-        ensureFileExists(weatherPath);*/
-        
+                
         var weatherResponse = await downloadWeatherData(weatherPath);
         
-
         if(weatherResponse != null){
-            //setTimeout(async () => { weatherData = await readWeatherData(weatherPath); }, 500);
             setTimeout(async () => {
                 weatherData = await readWeatherData(weatherPath);
-                sendUpdate(weatherData);
+                sendUpdate({type: "weather", data: weatherData});
             }, 500);
             
         }
-        
 
-        setInterval(() => downloadWeatherData(weatherPath), 300000);
+        setInterval(() => downloadWeatherData(weatherPath), 600000);
         
         setInterval(async () => {
+
             weatherData = await readWeatherData(weatherPath);
-        }, 305000);
+            sendUpdate({type: "weather", data: weatherData});
+
+        }, 605000);
         
 
     } catch (error){
@@ -769,8 +760,6 @@ app.get(`/download-weather`, async (req, res) => {
         res.redirect(baseURL);
     }
 
-    
-    
 });
 
 app.get('/get-weather', async (req, res) => {
@@ -839,8 +828,6 @@ process.on('exit', (code) => {
     logError(`server.js process exited with code: ${code}`);
 });
 
-
-
 wss.on('connection', (ws) => {
     clients.push(ws);
 
@@ -855,7 +842,7 @@ wss.on('connection', (ws) => {
                 switch(data.message){
 
                     case "images":
-                        message = {type: "initial_images", data: imgUrls};
+                        message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                         sendUpdate(message);
                         break;
 
@@ -872,12 +859,12 @@ wss.on('connection', (ws) => {
                 break;
 
             case "images":
-                message = {type: "images", data: imgUrls};
+                message = {type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                 sendUpdate(message);
                 break;
 
             case "connection":
-                message = {type: "initial_images", data: imgUrls};
+                message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                 sendUpdate(message);
                 
                 setTimeout(() => {

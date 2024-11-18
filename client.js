@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const currentContentHeader = document.getElementById('currentContentHeader');
         const weatherData = document.getElementById('weatherData');
         const lastUpdatedWeather = document.getElementById('lastUpdated');
+        const lastUpdatedImages = document.getElementById('lastUpdate');
+
 
         const imageElements = [
             document.getElementById('image1'),
@@ -93,6 +95,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     response.data.forEach((url, index) => {
                         imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
                     });
+
+                    if(response.date != undefined){
+                        lastUpdatedImages.innerHTML = `Sist oppdatert: ${response.date}`;
+                    }
                     
                     break;
                 
