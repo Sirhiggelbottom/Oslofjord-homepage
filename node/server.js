@@ -517,7 +517,7 @@ function updateImages(){
     
             const downloadPromises = links.map((link, index) => {
                 const imagePath = path.join(imageDir, `image${index + 1}.png`);
-                imgUrls[index + 1] = `http://localhost:3000/images/image${index + 1}.png`;
+                imgUrls[index] = `http://localhost:3000/images/image${index + 1}.png`;
                 return downloadImage(link, imagePath);
             });
     
