@@ -385,6 +385,8 @@ async function readWeatherData(weatherPath) {
 
     const exptRainProbabilityNext6Hours = getNewestWeatherData("next_6_hours", "probability_of_precipitation");
 
+    writeToLog("Weather updated");
+
     return {
 
         "Current_temp" : currTemp,
@@ -844,32 +846,37 @@ wss.on('connection', (ws) => {
                     case "images":
                         message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                         sendUpdate(message);
+                        writeToLog("Loaded images to clients");
                         break;
 
                     case "weather":
                         message = {type: "initial_weather", data: weatherData};
                         sendUpdate(message);
+                        writeToLog("Loaded weather to clients");
                         break;
                 }
         
             case "weather":
                 message = {type: "weather", data: weatherData};
                 sendUpdate(message);
-                //sendUpdate(weatherData);
+                writeToLog("Updated weather for clients");
                 break;
 
             case "images":
                 message = {type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                 sendUpdate(message);
+                writeToLog("Updated images for clients");
                 break;
 
             case "connection":
                 message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
                 sendUpdate(message);
+                writeToLog("Loaded images for new client");
                 
                 setTimeout(() => {
                     message = {type: "initial_weather", data: weatherData};
                     sendUpdate(message);
+                    writeToLog("Loaded weather for new client");
                 }, 200);
 
                 break;
