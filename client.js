@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
                     });
 
-                    if(response.date != undefined){
+                    if(response.date != undefined){ // Sist oppdatert
                         lastUpdatedImages.innerHTML = `Sist oppdatert: ${response.date}`;
                     }
                     
