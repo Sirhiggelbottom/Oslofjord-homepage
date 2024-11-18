@@ -75,6 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
             
             
             const response = JSON.parse(event.data);
+            var updatedImages;
 
             var packet;
 
@@ -97,6 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
 
                     if(response.date != undefined){ // Sist oppdatert
+                        updatedImages = response.date.toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'});
                         lastUpdatedImages.innerHTML = `Sist oppdatert: ${response.date.toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})}`;
                     }
                     
