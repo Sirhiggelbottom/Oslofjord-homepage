@@ -385,7 +385,9 @@ async function readWeatherData(weatherPath) {
 
     const exptRainProbabilityNext6Hours = getNewestWeatherData("next_6_hours", "probability_of_precipitation");
 
-    
+    setTimeout(() => {
+        sendUpdate({type: "weather", data: weatherData});
+    }, 2000);
 
     return {
 
