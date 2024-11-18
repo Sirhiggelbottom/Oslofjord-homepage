@@ -523,7 +523,7 @@ function updateImages(){
     
             await Promise.all(downloadPromises);
 
-            sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})});
+            sendUpdate({type: "images", data: imgUrls, date: new Date()});
 
             res.send("Images updated successfully");
             debug(false,"updateImages finished");
@@ -718,7 +718,7 @@ app.get('/download-images', async (req, res) => {
 
         setInterval(updateImages, 3600000);
 
-        sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })});
+        sendUpdate({type: "images", data: imgUrls, date: new Date()});
 
         writeToLog("Images downloaded");
 
@@ -844,7 +844,7 @@ wss.on('connection', (ws) => {
                 switch(data.message){
 
                     case "images":
-                        message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
+                        message = {type: "initial_images", data: imgUrls, date: new Date()};
                         sendUpdate(message);
                         writeToLog("Loaded images to clients");
                         break;
@@ -863,13 +863,13 @@ wss.on('connection', (ws) => {
                 break;
 
             case "images":
-                message = {type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
+                message = {type: "images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Updated images for clients");
                 break;
 
             case "connection":
-                message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
+                message = {type: "initial_images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Loaded images for new client");
                 
