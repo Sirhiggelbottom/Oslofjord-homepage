@@ -309,7 +309,7 @@ function getLastUpdated(weatherJSON){
         });
         
     } catch (error){
-        lastUpdated = new Date().toLocaleString('en-GB', { hour12: false });
+        lastUpdated = new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'});
         logError(`Error getting lastUpdated from weatherFile: ${error}`);
     } finally {
         return lastUpdated;
@@ -523,7 +523,7 @@ function updateImages(){
     
             await Promise.all(downloadPromises);
 
-            sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })});
+            sendUpdate({type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})});
 
             res.send("Images updated successfully");
             debug(false,"updateImages finished");
@@ -844,7 +844,7 @@ wss.on('connection', (ws) => {
                 switch(data.message){
 
                     case "images":
-                        message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
+                        message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
                         sendUpdate(message);
                         writeToLog("Loaded images to clients");
                         break;
@@ -863,13 +863,13 @@ wss.on('connection', (ws) => {
                 break;
 
             case "images":
-                message = {type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
+                message = {type: "images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
                 sendUpdate(message);
                 writeToLog("Updated images for clients");
                 break;
 
             case "connection":
-                message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false })};
+                message = {type: "initial_images", data: imgUrls, date: new Date().toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'})};
                 sendUpdate(message);
                 writeToLog("Loaded images for new client");
                 
