@@ -97,9 +97,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
                     });
 
-                    if(response.date != undefined){ // Sist oppdatert
-                        updatedImages = new Date(response.date).toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'});
-                        lastUpdatedImages.innerHTML = `Sist oppdatert: ${updatedImages}`;
+                    if(response.date != undefined){ 
+                        let resDate = new Date(response.date);
+                        let diff = resDate.getTimezoneOffset();
+                        let adjustedTime = new Date(resDate.getTime() + (+60 + diff) * 60 * 1000).toLocaleString('en-GB', {hour12: false});
+                        console.log(`Justert tid: ${adjustedTime}`);
+
+                        lastUpdatedImages.innerHTML = `Sist oppdatert: ${adjustedTime}`;
                     }
                     
                     break;
