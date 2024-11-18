@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
 
                     if(response.date != undefined){ // Sist oppdatert
-                        updatedImages = response.date.toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'});
+                        updatedImages = new Date(response.date).toLocaleString('en-GB', { hour12: false , timeZone: 'Europe/London'});
                         lastUpdatedImages.innerHTML = `Sist oppdatert: ${updatedImages}`;
                     }
                     
