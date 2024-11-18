@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         let resDate = new Date(response.date);
                         let diff = resDate.getTimezoneOffset();
                         let adjustedTime = new Date(resDate.getTime() + (+60 + diff) * 60 * 1000).toLocaleString('en-GB', {hour12: false});
-                        console.log(`Justert tid: ${adjustedTime}`);
+                        
 
                         lastUpdatedImages.innerHTML = `Sist oppdatert: ${adjustedTime}`;
                     }
