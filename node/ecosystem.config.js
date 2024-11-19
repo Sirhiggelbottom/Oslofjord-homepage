@@ -1,11 +1,11 @@
 module.exports = {
     apps : [{
         name: 'backend-server',
-        script: './server.js',
+        script: 'sh',
+        args: '-c "npm install && node ./server.js"',
         instances: 1,
         autorestart: true,
         watch: false,
-        pre_start: "npm install",
         
     }, {
         name: 'host-server',
