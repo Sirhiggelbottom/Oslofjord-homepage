@@ -39,9 +39,7 @@ function getHostname(){
 
 const hostName = getHostname();
 
-console.log(`Hostname: ${hostName}`);
-
-const baseURL = "http://localhost:3000";
+const baseURL = `http://${hostName}:3000`;
 
 var imgUrls = [
     '',
@@ -607,7 +605,7 @@ function updateImages(){
     
             const downloadPromises = links.map((link, index) => {
                 const imagePath = path.join(imageDir, `image${index + 1}.png`);
-                imgUrls[index] = `http://localhost:3000/images/image${index + 1}.png`;
+                imgUrls[index] = `${hostName}/images/image${index + 1}.png`;
                 return downloadImage(link, imagePath);
             });
     
@@ -820,7 +818,7 @@ app.get('/download-images', async (req, res) => {
 
         const downloadPromises = links.map((link, index) => {
             const imagePath = path.join(imageDir, `image${index + 1}.png`);
-            imgUrls[index] = `http://localhost:3000/images/image${index + 1}.png`;
+            imgUrls[index] = `${hostName}/images/image${index + 1}.png`;
             return downloadImage(link, imagePath);
         });
 
@@ -972,7 +970,7 @@ app.listen(3000, () => {
 
     removeOldLogs();
     //removeOldLogs(logFile);
-    console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000\n`);
+    console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on ${hostName}\n`);
 });
 
 server.listen(3001, () => {
