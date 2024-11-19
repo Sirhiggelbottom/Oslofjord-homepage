@@ -4,7 +4,9 @@ module.exports = {
         script: './server.js',
         instances: 1,
         autorestart: true,
-        watch: false
+        watch: false,
+        pre_start: "npm install",
+        
     }, {
         name: 'host-server',
         script: 'python3',
