@@ -1,5 +1,3 @@
-const { hostname } = require("os");
-
 document.addEventListener("DOMContentLoaded", function () {
     try{
         const cycledContentContainer = document.getElementById('cycledContentContainer');
