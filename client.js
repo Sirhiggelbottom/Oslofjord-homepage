@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var webSocket;
         var hostName;
 
-        const url = `ws://${window.location.hostname}:3000/get-connection`;
+        const url = `${window.location.protocol}//${window.location.hostname}:3000/get-connection`;
 
         console.log(`Url is: ${url}`);
 
