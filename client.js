@@ -8,7 +8,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var webSocket;
         var hostName;
 
-        fetch('http://localhost:3000/get-connection')
+        const url = `ws://${window.location.hostname}:3000/get-connection`;
+
+        console.log(`Url is: ${url}`);
+
+        fetch(url)
             .then(response => response.text())
             .then(data => {
                 hostName = data;
