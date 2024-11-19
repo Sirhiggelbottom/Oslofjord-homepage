@@ -1,3 +1,5 @@
+const { hostname } = require("os");
+
 document.addEventListener("DOMContentLoaded", function () {
     try{
         const cycledContentContainer = document.getElementById('cycledContentContainer');
@@ -90,6 +92,15 @@ document.addEventListener("DOMContentLoaded", function () {
          * Also handles messages.
          */
         function connectSocket(){
+
+            if (hostName == undefined){
+                setTimeout(() => {
+                    connectSocket();
+                }, 2000);
+
+                return;
+            }
+
             const socket = new WebSocket(hostName);
             webSocket = socket;
             
