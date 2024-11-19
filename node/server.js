@@ -90,7 +90,7 @@ var weatherData = {
 function getHostname(){
     const networkInterfaces = os.networkInterfaces();
     for (const interfaceName in networkInterfaces){
-        const addresses = networkInterfaces(interfaceName);
+        const addresses = networkInterfaces[interfaceName];
         for (const address of addresses){
             if(address.family === 'IPv4' && !address.internal){
                 return address.address;
