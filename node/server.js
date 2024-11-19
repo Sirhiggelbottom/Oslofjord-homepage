@@ -66,6 +66,26 @@ ensureDirectoryExists(weatherDir);
 const weatherPath = path.join(weatherDir, `WeatherData.json`);
 ensureFileExists(weatherPath);
 
+var weatherData = {
+    Current_temp : Number,
+    Current_wind : Number,
+    Expected_rain : Number,
+    Current_cloud : Number,
+    Current_fog : Number,
+    Max_air_temp_6_hours : Number,
+    Min_air_temp_6_hours : Number,
+    Max_rain_6_hours : Number,
+    Min_rain_6_hours : Number,
+    Rain_probability_6_hours : Number,
+    Last_updated : "",
+};
+
+/**
+ * Sends updates to all connected WebSocket clients.
+ * @function sendUpdate
+ * @param {Object} data - The data to send to the clients.
+ * @throws Will log an error if there is an issue sending the update.
+ */
 function sendUpdate(data){
     clients.forEach(client => {
         if(client.readyState === WebSocket.OPEN){
@@ -126,19 +146,6 @@ function removeOldLogs(filePath){
     }
     
 }
-var weatherData = {
-    Current_temp : Number,
-    Current_wind : Number,
-    Expected_rain : Number,
-    Current_cloud : Number,
-    Current_fog : Number,
-    Max_air_temp_6_hours : Number,
-    Min_air_temp_6_hours : Number,
-    Max_rain_6_hours : Number,
-    Min_rain_6_hours : Number,
-    Rain_probability_6_hours : Number,
-    Last_updated : "",
-};
 
 function debug(debugging, message){
     if (debugging){
@@ -174,6 +181,17 @@ function logError(message){
     });
 }
 
+
+
+/**
+ * Retrieves the file ID of the newest image from the provided object.
+ *
+ * @param {Object} obj - An object containing image data, where each value is an image object.
+ * @param {string} obj[].file_name - The name of the image file.
+ * @param {number} obj[].file_date - The date of the image file, used for sorting.
+ * @param {string} obj[].file_id - The ID of the image file.
+ * @returns {string|null} The file ID of the newest image, or null if an error occurs.
+ */
 function getNewestImage(obj){    
     const images = Object.values(obj);
     try{
@@ -187,18 +205,24 @@ function getNewestImage(obj){
     
 }
 
+/**
+ * Retrieves the web content links for a file from Google Drive.
+ *
+ * @param {string} fileId - The ID of the file to retrieve links for.
+ * @returns {Promise<{fileId: string, webContentLink: string}>} An object containing the file ID and web content link.
+ * @throws Will log an error message if the request fails.
+ */
 async function getImgLink(fileId){
     try {
         const drive = google.drive({ version: 'v3', auth: oAuth2Client });
 
         const res = await drive.files.get({
             fileId : fileId,
-            fields: 'webViewLink, webContentLink',
+            fields: 'webContentLink',
         });
 
         return {
             fileId: fileId,
-            webViewLink: res.data.webViewLink,
             webContentLink: res.data.webContentLink,
         };
     } catch (error){
@@ -208,6 +232,14 @@ async function getImgLink(fileId){
 
 }
 
+/**
+ * Downloads an image from the specified URL and saves it to the given image path.
+ *
+ * @param {string} url - The URL of the image to download.
+ * @param {string} imagePath - The local file path where the image will be saved.
+ * @returns {Promise<void>} A promise that resolves when the image has been successfully downloaded and saved.
+ * @throws Will log an error message if the download fails.
+ */
 const downloadImage = async (url, imagePath) => {
     try{
         const writer = fs.createWriteStream(imagePath);
@@ -230,6 +262,14 @@ const downloadImage = async (url, imagePath) => {
     
 };
 
+/**
+ * Downloads weather data from the specified URL and saves it to the given path.
+ * @async
+ * @function downloadWeatherData
+ * @param {string} weatherPath - The local file path where the weather data will be saved.
+ * @returns {Promise<string>} A promise that resolves to "Ok" when the weather data has been successfully downloaded and saved.
+ * @throws Will log an error if the download fails.
+ */
 async function downloadWeatherData(weatherPath){
 
     var options = {
@@ -274,7 +314,13 @@ async function downloadWeatherData(weatherPath){
     writeToLog("Weather downloaded");
     return "Ok";
 }
-
+/**
+ * Reads and parses the weather data file.
+ * @function getWeatherFile
+ * @param {string} weatherPath - The local file path of the weather data file.
+ * @returns {Object|null} The parsed weather data, or null if an error occurs.
+ * @throws Will log an error if there is an issue reading the weather file.
+ */
 function getWeatherFile(weatherPath){
     try{
         const weatherFile = fs.readFileSync(weatherPath);
@@ -286,7 +332,13 @@ function getWeatherFile(weatherPath){
         return null;
     }
 }
-
+/**
+ * Retrieves the last updated timestamp from the weather data.
+ * @function getLastUpdated
+ * @param {Object} weatherJSON - The parsed weather data.
+ * @returns {string|null} The last updated timestamp, or null if an error occurs.
+ * @throws Will log an error if there is an issue retrieving the last updated timestamp.
+ */
 function getLastUpdated(weatherJSON){
     var lastUpdated;
     
@@ -316,7 +368,14 @@ function getLastUpdated(weatherJSON){
     }
 
 }
-
+/**
+ * Reads and processes the weather data from the specified path.
+ * @async
+ * @function readWeatherData
+ * @param {string} weatherPath - The local file path of the weather data file.
+ * @returns {Promise<Object>} A promise that resolves to the processed weather data.
+ * @throws Will log an error if there is an issue reading or processing the weather data.
+ */
 async function readWeatherData(weatherPath) {
 
     const weatherJSON = await getWeatherFile(weatherPath);
@@ -330,7 +389,14 @@ async function readWeatherData(weatherPath) {
     const weatherValues = weatherJSON["properties"]["timeseries"];
     const lastUpdated = getLastUpdated(weatherJSON);
 
-    function getNewestWeatherData(category, type){
+    /**
+     * 
+     * @param {string} timeFrame - The choosen timeframe i.e instant, next hour, etc.
+     * @param {string} type - The type of weather to retrive.
+     * @returns {string|number|undefined} - The choosen value or undefined if data doesn't exist.
+     * @throws Will log an error if it can't find a value for the choosen data.
+     */
+    function getNewestWeatherData(timeFrame, type){
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentDay = currentDate.getDate();
@@ -348,7 +414,7 @@ async function readWeatherData(weatherPath) {
 
                     
                     if(timeseriesMonth == currentMonth && timeseriesDay == currentDay && timeseriesHour == currentHour){
-                        return weather["data"][category]["details"][type];
+                        return weather["data"][timeFrame]["details"][type];
                     } else {
                         return undefined;
                     }
@@ -360,6 +426,7 @@ async function readWeatherData(weatherPath) {
         
             if (values.length < 1){
                 logError(`Error no weatherData available for: ${type}`);
+                return undefined;
             }
         
         return values[0];
@@ -403,13 +470,23 @@ async function readWeatherData(weatherPath) {
 
     };
 
-    
 }
 
-function isWeatherDataInComplete(weatherData){
-    return Object.values(weatherData).some(value => value === undefined || value === null);
-}
-
+/**
+ * Updates images by fetching the latest images from Google Drive, downloading them, and updating the server with the new images.
+ * 
+ * This function performs the following steps:
+ * 1. Sets up an endpoint `/update-images` to handle the image update request.
+ * 2. Uses the Google Drive API to list image files based on specific criteria.
+ * 3. Sorts and processes the image files to determine the newest images for different categories.
+ * 4. Updates environment variables with the IDs of the newest images.
+ * 5. Downloads the newest images and saves them to the server.
+ * 6. Sends an update notification with the new image URLs.
+ * 
+ * @async
+ * @function updateImages
+ * @throws Will throw an error if there is an issue with setting credentials, listing folders, getting a response, or downloading images.
+ */
 function updateImages(){
 
     debug(false,"Updating images");
@@ -546,10 +623,21 @@ function updateImages(){
 
 }
 
+/**
+ * Displays the Google OAuth 2.0 login screen with a link to initiate the login process.
+ * @function GET /
+ * @returns redirect to /auth
+ */
 app.get('/', (req, res) => {
     res.send('<h1>Welcome to the Google OAuth 2.0 Login screen</h1><p><a href="/auth">Login with Google</a></p>');
 });
 
+/**
+ * Generates the Google OAuth 2.0 authentication URL and Redirects the user to it.
+ * @function GET /auth
+ * @returns redirect to /auth/callback
+ * @throws Will log an error if there is an issue generating the authentication URL.
+ */
 app.get('/auth', (req, res) => {
     const authUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline', // To get a refresh token
@@ -564,6 +652,13 @@ app.get('/auth', (req, res) => {
     res.redirect(authUrl);
 });
 
+/**
+ * Handles the OAuth 2.0 callback, exchanges the authorization code for tokens, and Redirects to the list folders route.
+ * @async
+ * @function GET /auth/callback
+ * @returns redirect to /list-folders
+ * @throws Will log an error if there is an issue retrieving the access token.
+ */
 app.get('/auth/callback', async (req, res) => {
     const code = req.query.code;
 
@@ -583,6 +678,13 @@ app.get('/auth/callback', async (req, res) => {
     }
 });
 
+/**
+ * Lists the folders in the authenticated user's Google Drive.
+ * @async
+ * @function GET /list-folders
+ * @returns Redirects to /download-images
+ * @throws Will log an error if there is an issue listing the folders.
+ */
 app.get('/list-folders', async (req, res) => {
     
     try {
@@ -676,18 +778,6 @@ app.get('/list-folders', async (req, res) => {
     }
 });
 
-app.get('/list-images', (req, res) => {
-    const imagesPath = path.join(__dirname, 'images');
-    const imageFiles = fs.readdirSync(imagesPath);
-
-    if(imageFiles.length == 0){
-        console.error("The images hasn't been downloaded yet.");
-        res.status(500).send("The images hasn't been downloaded yet.");
-    } else {
-        res.send("Ok");
-    }
-});
-
 app.get('/images/:imageName', (req, res) => {
     const imageName = req.params.imageName;
     const imagePath = path.join(__dirname, 'images', imageName);
@@ -695,6 +785,13 @@ app.get('/images/:imageName', (req, res) => {
 
 });
 
+/**
+ * Downloads the latest images from Google Drive and saves them to the server.
+ * @async
+ * @function GET /download-images
+ * @returns Redirects to /download-weather
+ * @throws Will log an error if there is an issue downloading the images.
+ */
 app.get('/download-images', async (req, res) => {
     try{
         const drive = google.drive({ version: 'v3', auth: oAuth2Client });
@@ -731,6 +828,13 @@ app.get('/download-images', async (req, res) => {
     }
 });
 
+/**
+ * Downloads the latest weather data and saves it to the server.
+ * @async
+ * @function GET /download-weather
+ * @returns Redirects to the root route.
+ * @throws Will log an error if there is an issue downloading the weather data.
+ */
 app.get(`/download-weather`, async (req, res) => {
 
     try{
@@ -764,56 +868,6 @@ app.get(`/download-weather`, async (req, res) => {
 
 });
 
-app.get('/get-weather', async (req, res) => {
-    let weatherPath = path.join(__dirname, 'weather', 'WeatherData.json');
-
-    weatherData = await readWeatherData(weatherPath);
-    
-    if(isWeatherDataInComplete(weatherData)){
-        
-        //writeToLog("WeatherData not present");
-        
-
-        res.json({
-            Current_temp : undefined,
-            Expected_rain : undefined,
-            Current_wind : undefined,
-            Current_cloud : undefined,
-            Current_fog: undefined,
-            Max_air_temp_6_hours : undefined,
-            Min_air_temp_6_hours : undefined,
-            Max_rain_6_hours : undefined,
-            Min_rain_6_hours : undefined,
-            Rain_probability_6_hours : undefined,
-            Last_updated : undefined,
-        });
-
-
-    } else {
-        
-        res.json(weatherData);
-        //writeToLog("WeatherData sent to client");
-    }
-    
-});
-
-app.post('/log-error', (req, res) => {
-    
-    try{
-
-        const {message} = req.body;
-
-        logError("Client error: " + message);
-        //logError(`client error: ${Object.keys(req)}`);
-
-        res.json({message: 'Data received successfully', received: message});
-
-    } catch (error){
-        logError("Error when logging errors from client: " + error);
-    }
-    
-});
-
 process.on('uncaughtException', (err) => {
     logError(`Uncaught Exception: ${err.message}\n${err.stack}`);
     // Optionally exit after logging to avoid an unstable state
@@ -837,7 +891,7 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
         var message;
 
-       switch(data.type){
+        switch(data.type){
 
             case "load":
 
@@ -880,8 +934,15 @@ wss.on('connection', (ws) => {
                 }, 200);
 
                 break;
+            
+            case "error":
+                
+                if(data.message){
+                    logError(data.message);
+                }
 
-        }
+                break;
+        }   
     });
 
     ws.on('close', () => {

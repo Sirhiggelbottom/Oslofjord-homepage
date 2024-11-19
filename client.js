@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const weatherData = document.getElementById('weatherData');
         const lastUpdatedWeather = document.getElementById('lastUpdated');
         const lastUpdatedImages = document.getElementById('lastUpdate');
-
+        var webSocket;
 
         const imageElements = [
             document.getElementById('image1'),
@@ -17,10 +17,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         imageElements.forEach(img => {
             cycledContentContainer.appendChild(img);
-        })
+        });
 
-        const socket = new WebSocket('ws://localhost:3001');
-
+        /**
+         * Used to chain messages to the server.
+         * @param {webSocket} socket - WebSocket used to send message.
+         * @param {Object} message - Object containing message type and the message itself.
+         * @param {number} timeout - Timeout before trying to resend message in ms.
+         * @param {callback} callback - Callback.
+         * @returns {void}
+         */
         function sendMessageWithCallback(socket, message, timeout, callback){
             if(socket.bufferedAmount === 0){
                 socket.send(JSON.stringify(message));
@@ -33,33 +39,135 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        function sendMessage(socket, message, timeout){
-            if(socket.bufferedAmount === 0){
-                socket.send(JSON.stringify(message));
-            } else {
-                setTimeout(() => {
-                    sendMessage(socket, message, timeout);
-                }, timeout);
+        /**
+         * Sends messages to the server.
+         * @param {webSocket} socket - WebSocket used to send message.
+         * @param {Object} message - Object containing message type and the message itself.
+         * @param {number} timeout - Timeout before trying to resend message in ms.
+         * @param {number} limit - Amount of attempts.
+         * @returns {void}
+         * @throws Prints the error to the console.
+         */
+        function sendMessage(socket, message, timeout, limit){
+            
+            try{
+
+                let attempts = 0;
+            
+                function attemptSend() {
+                    if (attempts >= limit) {
+                        console.error('Message attempts limit reached');
+                        return;
+                    }
+                    
+                    if (socket.bufferedAmount === 0) {
+                        socket.send(JSON.stringify(message));
+                    } else {
+                        attempts++;
+                        setTimeout(attemptSend, timeout);
+                    }
+                }
+                
+                attemptSend();
+
+            } catch (error){
+                console.error(`Error: ${error}`);
             }
             
         }
 
-        socket.addEventListener('open', (event) => {
-            console.log("Connected");
-            sendMessage(socket, {type: "connection"}, 200);
-        });
+        var lastUpdated, temp, regn, vind, skyer, taake, maksTemp6Timer, minTemp6Timer, maksRegn6Timer, minRegn6Timer, regnSannsynlighet;
 
-        var lastUpdated;
-        var temp;
-        var regn;
-        var vind;
-        var skyer;
-        var taake;
-        var maksTemp6Timer;
-        var minTemp6Timer;
-        var maksRegn6Timer;
-        var minRegn6Timer;
-        var regnSannsynlighet;
+        /**
+         * Connects the client to the server via a WebSocket.
+         * Also handles messages.
+         */
+        function connectSocket(){
+            const socket = new WebSocket('ws://localhost:3001');
+            webSocket = socket;
+            
+            socket.addEventListener('open', (event) => {
+                console.log("Connected");
+                sendMessage(socket, {type: "connection"}, 200, 5);
+            });
+
+            socket.addEventListener('message', (event) => {
+            
+                const response = JSON.parse(event.data);
+                var imageUpdateTime;
+    
+                var packet;
+    
+                switch(response.type){
+                    case "downloaded":
+                        packet = {type: "load", message: "images"};
+                        
+                        sendMessageWithCallback(socket, packet, 200, () => {
+                            packet = {type: "load", message: "weather"};
+                            sendMessageWithCallback(socket, packet, 200);
+                        });
+                        
+                        break;
+                    
+                    case "initial_images":
+                    case "images":
+    
+                        response.data.forEach((url, index) => {
+                            if(imageElements[index]){
+                                imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
+                            } else {
+                                packet = {type: "error", message: "Array size mismatch!"};
+                                sendMessage(socket, packet, 500, 5);
+                            }
+                        });
+    
+                        if(response.date != undefined){
+                            imageUpdateTime = new Date(new Date(response.date).getTime() + (60 + new Date(response.date).getTimezoneOffset()) * 60 * 1000).toLocaleString('en-GB', {hour12: false}); 
+                            /*let responseDate = new Date(response.date);
+                            let timezoneOffset = responseDate.getTimezoneOffset();
+                            let adjustedTime = new Date(responseDate.getTime() + (+60 + timezoneOffset) * 60 * 1000).toLocaleString('en-GB', {hour12: false});*/
+    
+                            lastUpdatedImages.innerHTML = `Sist oppdatert: ${imageUpdateTime}`;
+                        }
+                        
+                        break;
+                    
+                    case "initial_weather":
+                    case "weather":
+    
+                        temp = response.data.Current_temp;
+                        regn = response.data.Expected_rain;
+                        vind = response.data.Current_wind;
+                        skyer = response.data.Current_cloud;
+                        taake = response.data.Current_fog;
+                        maksTemp6Timer = response.data.Max_air_temp_6_hours;
+                        minTemp6Timer = response.data.Min_air_temp_6_hours;
+                        maksRegn6Timer = response.data.Max_rain_6_hours;
+                        minRegn6Timer = response.data.Min_rain_6_hours;
+                        regnSannsynlighet = response.data.Rain_probability_6_hours;
+                        lastUpdated = response.data.Last_updated;
+    
+                        lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
+                        break;
+                    
+                }
+    
+            });
+
+            socket.addEventListener('close', (event) => {
+                console.log("Disconnected, trying to reconnect again");
+                setTimeout(connectSocket, 5000);
+            });
+    
+            socket.addEventListener('error', (error) => {
+                console.error(`Error: ${error}`);
+            });
+
+        }
+        
+        connectSocket();
+
+        
 
         // Display current date and time
         function updateDateTime() {
@@ -71,72 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
         setInterval(updateDateTime, 1000);
         updateDateTime();
         
-        socket.addEventListener('message', (event) => {
-            
-            
-            const response = JSON.parse(event.data);
-            var updatedImages;
-
-            var packet;
-
-            switch(response.type){
-                case "downloaded":
-                    packet = {type: "load", message: "images"};
-                    
-                    sendMessageWithCallback(socket, packet, 200, () => {
-                        packet = {type: "load", message: "weather"};
-                        sendMessageWithCallback(socket, packet, 200);
-                    });
-                    
-                    break;
-                
-                case "initial_images":
-                case "images":
-
-                    response.data.forEach((url, index) => {
-                        imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
-                    });
-
-                    if(response.date != undefined){ 
-                        let resDate = new Date(response.date);
-                        let diff = resDate.getTimezoneOffset();
-                        let adjustedTime = new Date(resDate.getTime() + (+60 + diff) * 60 * 1000).toLocaleString('en-GB', {hour12: false});
-                        
-
-                        lastUpdatedImages.innerHTML = `Sist oppdatert: ${adjustedTime}`;
-                    }
-                    
-                    break;
-                
-                case "initial_weather":
-                case "weather":
-
-                    temp = response.data.Current_temp;
-                    regn = response.data.Expected_rain;
-                    vind = response.data.Current_wind;
-                    skyer = response.data.Current_cloud;
-                    taake = response.data.Current_fog;
-                    maksTemp6Timer = response.data.Max_air_temp_6_hours;
-                    minTemp6Timer = response.data.Min_air_temp_6_hours;
-                    maksRegn6Timer = response.data.Max_rain_6_hours;
-                    minRegn6Timer = response.data.Min_rain_6_hours;
-                    regnSannsynlighet = response.data.Rain_probability_6_hours;
-                    lastUpdated = response.data.Last_updated;
-
-                    lastUpdatedWeather.innerHTML = `Sist oppdatert: ${lastUpdated.toLocaleString('en-GB', { hour12: false })}`;
-                    break;
-                
-            }
-
-        });
-
-        socket.addEventListener('error', (error) => {
-            console.error(`Error: ${error}`);
-        })
         
-        socket.addEventListener('close', (event) => {
-            console.log("Disconnected");
-        })
         
         var currentIndex = 0;
         var currentWeatherIndex = 0;
@@ -210,6 +253,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     } catch (error){
         console.error(`Error: ${error}`);
+
+        if(webSocket){
+            sendMessage(webSocket, {type: "error", message: `Client: ${error}`});
+        }
     }
     
 });
