@@ -15,6 +15,7 @@ const { send } = require('process');
 const { Socket } = require('dgram');
 const readline = require('readline');
 const moment = require('moment');
+const os = require('os');
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
@@ -23,6 +24,10 @@ let clients = [];
 
 app.use(cors());
 app.use(express.json());
+
+const hostName = getHostname();
+
+console.log(`Hostname: ${hostName}`);
 
 const baseURL = "http://localhost:3000";
 
@@ -81,6 +86,18 @@ var weatherData = {
     Rain_probability_6_hours : Number,
     Last_updated : "",
 };
+
+function getHostname(){
+    const networkInterfaces = os.networkInterfaces();
+    for (const interfaceName in networkInterfaces){
+        const addresses = networkInterfaces(interfaceName);
+        for (const address of addresses){
+            if(address.family === 'IPv4' && !address.internal){
+                return address.address;
+            }
+        }
+    }
+}
 
 /**
  * Sends updates to all connected WebSocket clients.
