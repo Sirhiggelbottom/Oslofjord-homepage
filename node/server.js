@@ -605,7 +605,7 @@ function updateImages(){
     
             const downloadPromises = links.map((link, index) => {
                 const imagePath = path.join(imageDir, `image${index + 1}.png`);
-                imgUrls[index] = `${hostName}/images/image${index + 1}.png`;
+                imgUrls[index] = `${baseURL}/images/image${index + 1}.png`;
                 return downloadImage(link, imagePath);
             });
     
@@ -818,7 +818,7 @@ app.get('/download-images', async (req, res) => {
 
         const downloadPromises = links.map((link, index) => {
             const imagePath = path.join(imageDir, `image${index + 1}.png`);
-            imgUrls[index] = `${hostName}/images/image${index + 1}.png`;
+            imgUrls[index] = `${baseURL}/images/image${index + 1}.png`;
             return downloadImage(link, imagePath);
         });
 
