@@ -13,6 +13,8 @@ const WebSocket = require('ws');
 const http = require('http');
 const { send } = require('process');
 const { Socket } = require('dgram');
+const readline = require('readline');
+const moment = require('moment');
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
@@ -94,56 +96,48 @@ function sendUpdate(data){
     });
 }
 
-function removeOldLogs(filePath){
-    // datevalue e.g: 12/11/2024, 17:50:14
-    try{
+function removeOldLogs(){
 
-        const fileName = path.basename(filePath);
-        const currentDate = new Date();
-
-        fs.readFileSync(logFile, 'utf8', (error, data) => {
-            if (error){
-                logError(`Error reading ${fileName}: ${error}`);
-                return;
-            }
+    const logFiles = ['server.log', 'error.log'];
+    const oneWeekAgo = moment().subtract(7, 'days');
     
-            const logPattern = /\b\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}:\d{2}/g
-            // Split the log into individual lines
-            const logLines = data.split('\n');
+    logFiles.forEach((file) => {
+        const filePath = path.join(logDir, file);
+        const tempFilePath = path.join(logDir, `${file}.tmp`);
 
-            // Filter out lines with dates older than the given threshold
-            const updatedLogLines = logLines.filter(line => {
-                const match = line.match(logPattern);
-                if (!match) return true; // If no date found, keep the line
+        const readStream = fs.createReadStream(filePath);
+        const writeStream = fs.createWriteStream(tempFilePath);
 
-                const dateStr = match[0];
-                const [day, month, year] = dateStr.split("/");
-                const logDate = new Date(`${month}/${day}/${year}`);
-                const timeDiff = currentDate - logDate;
-
-                const differenceInDays = timeDiff / (24 * 60 * 60 * 1000);
-
-                // Keep only the logs that are not older than 30 days
-                return differenceInDays <= 30;
-            });
-
-            // Join the filtered log lines back into a string
-            const updatedData = updatedLogLines.join('\n');
-
-            // Write the updated content back to the file
-            try {
-                fs.writeFileSync(filePath, updatedData, 'utf8');
-                console.log(`Old logs removed successfully from ${fileName}`);
-            } catch (error) {
-                console.error(`Error writing to ${fileName}: ${error}`);
-            }
-    
+        const rl = readline.createInterface({
+            input: readStream,
+            output: process.stdout,
+            terminal: false,
         });
 
-    } catch (error){
-        logError(`Error removing old logs from: ${fileName}: ${error}`);
-        return;
-    }
+        rl.on('line', (line) => {
+            const match = line.match(/^\[(.*?)\]/)
+
+            if (match){
+                const logDate = moment(match[1], 'DD/MM/YYYY, HH:mm:ss');
+                if(logDate.isAfter(oneWeekAgo)){
+                    writeStream.write(line + '\n');
+                }
+            }
+        });
+
+        rl.on('close', () => {
+            writeStream.end(() => {
+                fs.rename(tempFilePath, filePath, (error) => {
+                    if (error){
+                        console.error(`Error replacing log file: ${file}\nError: ${error}`);
+                    } else {
+                        console.log(`Updated: ${file}`);
+                    }
+                })
+            })
+        });
+    });
+
     
 }
 
@@ -952,6 +946,12 @@ wss.on('connection', (ws) => {
 
 // Start the server
 app.listen(3000, () => {
+    
+    setInterval(() => {
+        removeOldLogs();
+    }, 604800000);
+
+    removeOldLogs();
     //removeOldLogs(logFile);
     console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on http://localhost:3000\n`);
 });
