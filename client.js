@@ -6,6 +6,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const lastUpdatedWeather = document.getElementById('lastUpdated');
         const lastUpdatedImages = document.getElementById('lastUpdate');
         var webSocket;
+        var hostName;
+
+        fetch('http://localhost:3000/get-connection')
+            .then(response => response.text())
+            .then(data => {
+                hostName = data;
+            });
 
         const imageElements = [
             document.getElementById('image1'),
@@ -83,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
          * Also handles messages.
          */
         function connectSocket(){
-            const socket = new WebSocket('ws://localhost:3001');
+            const socket = new WebSocket(hostName);
             webSocket = socket;
             
             socket.addEventListener('open', (event) => {

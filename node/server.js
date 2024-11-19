@@ -879,6 +879,10 @@ app.get(`/download-weather`, async (req, res) => {
 
 });
 
+app.get(`/get-connection`, (req, res) => {
+    res.send(`ws://${hostName}:3001`);
+});
+
 process.on('uncaughtException', (err) => {
     logError(`Uncaught Exception: ${err.message}\n${err.stack}`);
     // Optionally exit after logging to avoid an unstable state
