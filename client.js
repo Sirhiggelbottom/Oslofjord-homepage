@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
     try{
         const cycledContentContainer = document.getElementById('cycledContentContainer');
         const currentContentHeader = document.getElementById('currentContentHeader');
+        const dateTime = document.getElementById('dateTimeDisplay');
         const weatherData = document.getElementById('weatherData');
         const lastUpdatedWeather = document.getElementById('lastUpdated');
         const lastUpdatedImages = document.getElementById('lastUpdate');
@@ -189,15 +190,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Display current date and time
         function updateDateTime() {
-            const dateTimeBox = document.getElementById('dateTime');
             const now = new Date();
-            dateTimeBox.innerHTML = `<h2>${now.toLocaleString('en-GB', { hour12: false })}</h2>`;
+
+            // Date and Time parts
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-based
+            const year = now.getFullYear();
+
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            // Combined Date and Time String
+            const dateTimeString = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+
+            dateTime.textContent = dateTimeString;
+            
+            /*const dateTimeBox = document.getElementById('dateTime');
+            const now = new Date();
+            dateTimeBox.innerHTML = `<h2>${now.toLocaleString('en-GB', { hour12: false })}</h2>`;*/
         }
 
-        setInterval(updateDateTime, 1000);
+        setInterval(() => {
+            requestAnimationFrame(updateDateTime);
+        }, 1000);
         updateDateTime();
-        
-        
         
         var currentIndex = 0;
         var currentWeatherIndex = 0;
