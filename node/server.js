@@ -25,6 +25,18 @@ let clients = [];
 app.use(cors());
 app.use(express.json());
 
+function getHostname(){
+    const networkInterfaces = os.networkInterfaces();
+    for (const interfaceName in networkInterfaces){
+        const addresses = networkInterfaces[interfaceName];
+        for (const address of addresses){
+            if(address.family === 'IPv4' && !address.internal){
+                return address.address;
+            }
+        }
+    }
+}
+
 const hostName = getHostname();
 
 console.log(`Hostname: ${hostName}`);
@@ -87,17 +99,7 @@ var weatherData = {
     Last_updated : "",
 };
 
-function getHostname(){
-    const networkInterfaces = os.networkInterfaces();
-    for (const interfaceName in networkInterfaces){
-        const addresses = networkInterfaces[interfaceName];
-        for (const address of addresses){
-            if(address.family === 'IPv4' && !address.internal){
-                return address.address;
-            }
-        }
-    }
-}
+
 
 /**
  * Sends updates to all connected WebSocket clients.
