@@ -4,3 +4,4 @@ node_modules
 node/images
 node/weather
 node/logs
+refresh_token.json

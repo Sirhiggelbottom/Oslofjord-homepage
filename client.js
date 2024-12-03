@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(response => response.text())
             .then(data => {
                 hostName = data;
+                connectSocket();
             });
 
         const imageElements = [
@@ -94,6 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
          */
         function connectSocket(){
 
+            console.log(`Trying to connect to websocket at: ${hostName}`);
+            
             if (hostName == undefined){
                 setTimeout(() => {
                     connectSocket();
@@ -184,7 +187,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         }
         
-        connectSocket();
+        
 
         
 
