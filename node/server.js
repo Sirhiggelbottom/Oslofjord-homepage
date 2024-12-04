@@ -284,22 +284,12 @@ function authenticate() {
 
         process.env.AUTHURL = authUrl;
 
-        var browser;
-        
-        if(OS_type.includes("lin")){
-            browser = 'google-chrome';
-        } else if (OS_type.includes("dar")){
-            browser = 'google chrome';
-        } else if (OS_type.includes("win")){
-            browser = 'chrome';
-        }
-
         (async () => {
 
             const {default : open} = await import('open');
 
             try {
-                authWindow = await open(authUrl, {app: {name: browser}});
+                authWindow = await open(authUrl);
                 console.log("Please authenticate in the browser");
             } catch (error){
                 console.error(`Failed to open browser: ${error}`);
