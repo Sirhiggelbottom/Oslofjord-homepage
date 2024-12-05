@@ -1099,13 +1099,16 @@ process.on('exit', (code) => {
 });
 
 wss.on('connection', (ws, req) => {
-    console.log("A client is trying to connect");
     const clientIP = req.socket.remoteAddress;
     clients.push({ws, clientIP});
+    
+    console.log(`A client is trying to connect with IP-address: ${clientIP}`);
+    
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
         var message;
+        var emptyUrls = false;
 
         switch(data.type){
 
@@ -1117,8 +1120,13 @@ wss.on('connection', (ws, req) => {
                         imgUrls.forEach(url => {
                             if (url == ''){
                                 console.error("Error: imgUrls contains an empty url!");
+                                emptyUrls = true;
                             }
                         });
+
+                        if(!emptyUrls){
+                            console.log(`imageUrls: ${imgUrls.toString()}`);
+                        }
                         message = {type: "initial_images", data: imgUrls, date: new Date()};
                         sendUpdate(message);
                         writeToLog("Loaded images to clients");
@@ -1143,8 +1151,13 @@ wss.on('connection', (ws, req) => {
                 imgUrls.forEach(url => {
                     if (url == ''){
                         console.error("Error: imgUrls contains an empty url!");
+                        emptyUrls = true;
                     }
                 });
+
+                if(!emptyUrls){
+                    console.log(`imageUrls: ${imgUrls.toString()}`);
+                }
                 message = {type: "images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Updated images for clients");
@@ -1154,8 +1167,15 @@ wss.on('connection', (ws, req) => {
                 imgUrls.forEach(url => {
                     if (url == ''){
                         console.error("Error: imgUrls contains an empty url!");
+                        emptyUrls = true;
                     }
                 });
+
+                if(!emptyUrls){
+                    console.log(`imageUrls: ${imgUrls.toString()}`);
+                }
+
+
                 message = {type: "initial_images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Loaded images for new client");
