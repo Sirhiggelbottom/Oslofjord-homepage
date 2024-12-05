@@ -1114,6 +1114,11 @@ wss.on('connection', (ws, req) => {
                 switch(data.message){
 
                     case "images":
+                        imgUrls.forEach(url => {
+                            if (url == ''){
+                                console.error("Error: imgUrls contains an empty url!");
+                            }
+                        });
                         message = {type: "initial_images", data: imgUrls, date: new Date()};
                         sendUpdate(message);
                         writeToLog("Loaded images to clients");
@@ -1135,12 +1140,22 @@ wss.on('connection', (ws, req) => {
                 break;
 
             case "images":
+                imgUrls.forEach(url => {
+                    if (url == ''){
+                        console.error("Error: imgUrls contains an empty url!");
+                    }
+                });
                 message = {type: "images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Updated images for clients");
                 break;
 
             case "connection":
+                imgUrls.forEach(url => {
+                    if (url == ''){
+                        console.error("Error: imgUrls contains an empty url!");
+                    }
+                });
                 message = {type: "initial_images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Loaded images for new client");
