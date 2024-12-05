@@ -22,7 +22,7 @@ const wss = new WebSocket.Server({ server });
 
 let clients = [];
 
-app.use(cors((req, callback) => {
+/*app.use(cors((req, callback) => {
 
     const allowedOrigins = clients.map(client => client.clientIP);
     let corsOptions;
@@ -35,9 +35,9 @@ app.use(cors((req, callback) => {
     }
 
     callback(null, corsOptions);
-}));
+}));*/
 
-//app.use(cors({origin: '*'}));
+app.use(cors({origin: '*'}));
 
 app.use(express.json());
 
