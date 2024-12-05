@@ -96,8 +96,20 @@ h2 {
 
 .headerContainer {
     display: flex;
-    align-items: center; /* Aligns headers vertically */
-    gap: 10px; /* Adds space between h2 and h3 */
+    align-items: center; /* Align items vertically */
+    justify-content: space-between; /* Space items horizontally, h2 on left, dropdown on right */
+    width: 100%; /* Ensure container spans the full width */
+    position: relative;
+}
+
+#dropdownMenu {
+    position: absolute;
+    right: 20px; /* Position dropdown 20px from the right edge */
+    padding: 5px; /* Add some padding for better appearance */
+    font-size: 1em; /* Match the size of other text elements */
+    background-color: #f4f4f4;
+    border: 1px solid #ccc;
+    border-radius: 5px;
 }
 
 /* Additional styling for better readability */

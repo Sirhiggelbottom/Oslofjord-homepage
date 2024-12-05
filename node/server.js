@@ -318,8 +318,7 @@ async function collectImages(){
 
         await Promise.all(downloadPromises);
 
-        //setInterval(updateImages, 3600000);
-        setInterval(updateImages, 300000);
+        setInterval(updateImages, 3600000);
 
         sendUpdate({type: "images", data: imgUrls, date: new Date()});
 

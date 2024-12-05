@@ -6,8 +6,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const weatherData = document.getElementById('weatherData');
         const lastUpdatedWeather = document.getElementById('lastUpdated');
         const lastUpdatedImages = document.getElementById('lastUpdate');
+        const dropdown = document.getElementById('dropdownmenu');
         var webSocket;
         var hostName;
+        var contentTimeout;
 
         const url = `${window.location.protocol}//${window.location.hostname}:3000/get-connection`;
 
@@ -188,9 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         }
         
-        
-
-        
+         
 
         // Display current date and time
         function updateDateTime() {
@@ -228,9 +228,67 @@ document.addEventListener("DOMContentLoaded", function () {
             { type: 'Vaktliste Elektro', bilde: imageElements[0], tid: 15 },
             { type: 'Vaktliste Renovasjon', bilde: imageElements[1], tid: 15 },
             { type: 'Vaktliste Bygg', bilde: imageElements[2], tid: 15 },
-            { type: 'Telefon Vaktliste Nåværende Måned', bilde: imageElements[3], tid: 10 },
-            { type: 'Telefon Vaktliste Neste Måned', bilde: imageElements[4], tid: 10 },
+            { type: 'Telefon Vaktliste 1', bilde: imageElements[3], tid: 10 },
+            { type: 'Telefon Vaktliste 2', bilde: imageElements[4], tid: 10 },
         ];
+
+        dropdown.addEventListener('change', () => {
+            const selectedValue = dropdown.value;
+            const selectedText = dropdown.options[dropdown.selectedIndex].text;
+            
+            if (selectedValue == "option1"){
+
+                content.forEach(obj => {
+                    obj.bilde.style.display = 'none';
+                });
+
+                currentIndex = 0;
+                requestAnimationFrame(cycleContent);
+
+                return;
+            }
+
+            try{
+
+                if(contentTimeout){
+                    clearTimeout(contentTimeout);
+                    content.forEach(obj => {
+                        obj.bilde.style.display = 'none';
+                    });
+                }
+
+                const selectedContent = content.find(item => item.type == selectedText);
+
+                if (selectedContent){
+
+                    selectedContent.bilde.style.display = 'block';
+                    currentContentHeader.innerHTML = selectedContent.type;
+
+                }
+
+
+            } catch (error){
+                console.error(`Error: ${error}`);
+            }
+            
+            
+            /*
+            if (selectedValue != "option1"){
+                if (contentTimeout){
+                    clearTimeout(contentTimeout);
+
+                }
+            } else {
+
+                if (!contentTimeout){
+
+                    contentTimeout = setTimeout(() => {
+                        requestAnimationFrame(cycleContent);
+        
+                    }, currentContent["tid"] * 1000);
+                }
+            }*/
+        }); 
 
         function cycleContent() {
 
@@ -248,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
             currentIndex = (currentIndex + 1) % content.length;
 
-            setTimeout(() => {
+            contentTimeout = setTimeout(() => {
                 requestAnimationFrame(cycleContent);
 
             }, currentContent["tid"] * 1000);
