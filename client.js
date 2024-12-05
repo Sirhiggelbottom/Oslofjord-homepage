@@ -137,6 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         response.data.forEach((url, index) => {
                             if(imageElements[index]){
                                 imageElements[index].src = `${url}?timestamp=${new Date().getTime()}`;
+                                console.log(`Bilde url: ${imageElements[index].src}`);
                             } else {
                                 packet = {type: "error", message: "Array size mismatch!"};
                                 sendMessage(socket, packet, 500, 5);
@@ -234,8 +235,6 @@ document.addEventListener("DOMContentLoaded", function () {
         function cycleContent() {
 
             const currentContent = content[currentIndex];
-
-            console.log(`Bilde url: ${imageElements[currentIndex].src}`);
 
             if (currentIndex > 0){
                 content[currentIndex - 1].bilde.style.display = 'none';
