@@ -233,7 +233,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function cycleContent() {
 
-            const currentContent = content[currentIndex];            
+            const currentContent = content[currentIndex];
+
+            if (currentContent.bilde == undefined || currentContent.bilde == null){
+                currentContent.bilde = currentContent.bilde.src;
+            }
 
             if (currentIndex > 0){
                 content[currentIndex - 1].bilde.style.display = 'none';
