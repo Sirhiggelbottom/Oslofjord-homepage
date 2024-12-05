@@ -24,8 +24,26 @@ const wss = new WebSocket.Server({ server });
 
 let clients = [];
 
-app.use(cors());
+/*app.use(cors((req, callback) => {
+
+    const allowedOrigins = clients.map(client => client.clientIP);
+    let corsOptions;
+
+
+    if (allowedOrigins.includes(req.ip)) {
+        corsOptions = { origin: true };
+    } else {
+        corsOptions = { origin: false };
+    }
+
+    callback(null, corsOptions);
+}));*/
+
+app.use(cors({origin: '*'}));
+
 app.use(express.json());
+
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 function getHostname(){
     const networkInterfaces = os.networkInterfaces();
@@ -1080,15 +1098,10 @@ process.on('exit', (code) => {
     logError(`server.js process exited with code: ${code}`);
 });
 
-wss.on('connect', (ws) => {
-    console.log(`Client is trying to connect: ${ws}`);
-    clients.push(ws);
-})
-
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
     console.log("A client is trying to connect");
-    
-    clients.push(ws);
+    const clientIP = req.socket.remoteAddress;
+    clients.push({ws, clientIP});
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
@@ -1151,7 +1164,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        clients = clients.filter(client => client !== ws);
+        clients = clients.filter(client => client.ws !== ws);
     });
 
     ws.on('error', (error) => {
@@ -1160,7 +1173,7 @@ wss.on('connection', (ws) => {
 });
 
 // Start the server
-app.listen(3000, () => {
+app.listen(3000, '0.0.0.0', () => {
     
     authenticate();
 
