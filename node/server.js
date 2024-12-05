@@ -17,8 +17,6 @@ const readline = require('readline');
 const moment = require('moment');
 const os = require('os');
 
-const OS_type = os.type().toLowerCase();
-
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
@@ -902,7 +900,7 @@ wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress;
     clients.push({ws, clientIP});
 
-    console.log(`A client is trying to connect with IP-address: ${clientIP}`);
+    console.log(`A client is trying to connect`);
     
 
     ws.on('message', (message) => {
