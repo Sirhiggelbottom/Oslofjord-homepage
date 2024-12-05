@@ -235,9 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const currentContent = content[currentIndex];
 
-            if (currentContent.bilde == undefined || currentContent.bilde == null){
-                currentContent.bilde = currentContent.bilde.src;
-            }
+            console.log(`Bilde url: ${imageElements[currentIndex].src}`);
 
             if (currentIndex > 0){
                 content[currentIndex - 1].bilde.style.display = 'none';
