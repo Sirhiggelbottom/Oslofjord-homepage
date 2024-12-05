@@ -20,7 +20,7 @@ const os = require('os');
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
-let clients = [];
+var clients = [];
 
 /*app.use(cors((req, callback) => {
 
@@ -115,6 +115,13 @@ var weatherData = {
     Last_updated : "",
 };
 
+/**
+ * Initial collection of weatherdata, this also sends the weatherdata to any connected client
+ * 
+ * Updates the weatherdata with 10 minute intervals
+ * 
+ * @async
+ */
 async function collectWeather(){
     try{
                 
@@ -147,16 +154,16 @@ async function collectWeather(){
 /**
  * Updates images by fetching the latest images from Google Drive, downloading them, and updating the server with the new images.
  * 
+ * This function is a hybrid of listFolders() and collectImages() and accomplishes the same as them
+ * 
  * This function performs the following steps:
- * 1. Sets up an endpoint `/update-images` to handle the image update request.
- * 2. Uses the Google Drive API to list image files based on specific criteria.
- * 3. Sorts and processes the image files to determine the newest images for different categories.
- * 4. Updates environment variables with the IDs of the newest images.
- * 5. Downloads the newest images and saves them to the server.
- * 6. Sends an update notification with the new image URLs.
+ * - Uses the Google Drive API to list image files based on specific criteria.
+ * - Sorts and processes the image files to determine the newest images for the different departments.
+ * - Updates environment variables with the IDs of the newest images.
+ * - Downloads the newest images and saves them to the server.
+ * - Sends the updated image url's to any connected client.
  * 
  * @async
- * @function updateImages
  * @throws Will throw an error if there is an issue with setting credentials, listing folders, getting a response, or downloading images.
  */
 async function updateImages(){
@@ -191,8 +198,8 @@ async function updateImages(){
                 {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
             ];
 
-            var createdDate1;
-            var createdDate2;
+            /*var createdDate1;
+            var createdDate2;*/
             var createdDate;
 
             response.data.files.forEach(function(file){
@@ -200,10 +207,13 @@ async function updateImages(){
                 for (let map of mapping){
                     if (file.name.includes(map.avd)){
                         
-                        createdDate1 = file.name.split(" ")[1];
+                        /*createdDate1 = file.name.split(" ")[1];
                         createdDate2 = file.name.split(" ")[2];
                         var [day, month, year] = createdDate1.split("-");
-                        var [hour, minute] = createdDate2.split(":");
+                        var [hour, minute] = createdDate2.split(":");*/
+
+                        const [day, month, year] = file.name.split(" ")[1].split("-");
+                        const [hour, minute] = file.name.split(" ")[2].split(":");
                         
                         createdDate = Date.parse(new Date(year, month, day, hour, minute));
                         
@@ -281,6 +291,13 @@ async function updateImages(){
 
 }
 
+/** 
+ * Initial collection of image url's, this also sends the image url's to any connected client.
+ * 
+ * Updates the image url's with 1 hour intervals.
+ * 
+ * @async
+ */
 async function collectImages(){
     try{
 
@@ -301,7 +318,8 @@ async function collectImages(){
 
         await Promise.all(downloadPromises);
 
-        setInterval(updateImages, 3600000);
+        //setInterval(updateImages, 3600000);
+        setInterval(updateImages, 300000);
 
         sendUpdate({type: "images", data: imgUrls, date: new Date()});
 
@@ -315,6 +333,11 @@ async function collectImages(){
     }
 }
 
+/**
+ * Connects to google drive and maps the newest image url for each department.
+ * 
+ * 
+ */
 async function listFolders() {
     try {
         // Set credentials with the refresh token
@@ -345,8 +368,8 @@ async function listFolders() {
             
             debug(false, `antall filer: ${response.data.files.length}`);
 
-            var createdDate1;
-            var createdDate2;
+            /*var createdDate1;
+            var createdDate2;*/
             var createdDate;
 
             response.data.files.forEach(function(file){
@@ -354,11 +377,14 @@ async function listFolders() {
                 for (let map of mapping){
                     if (file.name.includes(map.avd)){
                         
-                        createdDate1 = file.name.split(" ")[1];
+                        /*createdDate1 = file.name.split(" ")[1];
                         createdDate2 = file.name.split(" ")[2];
                         var [day, month, year] = createdDate1.split("-");
-                        var [hour, minute] = createdDate2.split(":");
+                        var [hour, minute] = createdDate2.split(":");*/
                         
+                        const [day, month, year] = file.name.split(" ")[1].split("-");
+                        const [hour, minute] = file.name.split(" ")[2].split(":");
+
                         createdDate = Date.parse(new Date(year, month, day, hour, minute));
                         
                         map.target[file.name] = {
