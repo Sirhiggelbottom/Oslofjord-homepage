@@ -327,8 +327,8 @@ function authenticate() {
  */
 function sendUpdate(data){
     clients.forEach(client => {
-        if(client.readyState === WebSocket.OPEN){
-            client.send(JSON.stringify(data));
+        if(client.ws.readyState === WebSocket.OPEN){
+            client.ws.send(JSON.stringify(data));
         }
     });
 }
@@ -1101,7 +1101,7 @@ process.on('exit', (code) => {
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress;
     clients.push({ws, clientIP});
-    
+
     console.log(`A client is trying to connect with IP-address: ${clientIP}`);
     
 
@@ -1117,22 +1117,14 @@ wss.on('connection', (ws, req) => {
                 switch(data.message){
 
                     case "images":
-                        imgUrls.forEach(url => {
-                            if (url == ''){
-                                console.error("Error: imgUrls contains an empty url!");
-                                emptyUrls = true;
-                            }
-                        });
-
-                        if(!emptyUrls){
-                            console.log(`imageUrls: ${imgUrls.toString()}`);
-                        }
+                        console.log(`Client requests to load images`);
                         message = {type: "initial_images", data: imgUrls, date: new Date()};
                         sendUpdate(message);
                         writeToLog("Loaded images to clients");
                         break;
 
                     case "weather":
+                        console.log(`Client requests to load weather`);
                         message = {type: "initial_weather", data: weatherData};
                         sendUpdate(message);
                         writeToLog("Loaded weather to clients");
@@ -1142,40 +1134,21 @@ wss.on('connection', (ws, req) => {
                 break;
         
             case "weather":
+                console.log(`Client requests updated weather`);
                 message = {type: "weather", data: weatherData};
                 sendUpdate(message);
                 writeToLog("Updated weather for clients");
                 break;
 
             case "images":
-                imgUrls.forEach(url => {
-                    if (url == ''){
-                        console.error("Error: imgUrls contains an empty url!");
-                        emptyUrls = true;
-                    }
-                });
-
-                if(!emptyUrls){
-                    console.log(`imageUrls: ${imgUrls.toString()}`);
-                }
+                console.log(`Client requests updated images`);
                 message = {type: "images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Updated images for clients");
                 break;
 
             case "connection":
-                imgUrls.forEach(url => {
-                    if (url == ''){
-                        console.error("Error: imgUrls contains an empty url!");
-                        emptyUrls = true;
-                    }
-                });
-
-                if(!emptyUrls){
-                    console.log(`imageUrls: ${imgUrls.toString()}`);
-                }
-
-
+                console.log(`Client connected, images and weather requested`);
                 message = {type: "initial_images", data: imgUrls, date: new Date()};
                 sendUpdate(message);
                 writeToLog("Loaded images for new client");
