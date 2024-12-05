@@ -24,7 +24,7 @@ const wss = new WebSocket.Server({ server });
 
 let clients = [];
 
-/*app.use(cors((req, callback) => {
+app.use(cors((req, callback) => {
 
     const allowedOrigins = clients.map(client => client.clientIP);
     let corsOptions;
@@ -37,9 +37,9 @@ let clients = [];
     }
 
     callback(null, corsOptions);
-}));*/
+}));
 
-app.use(cors({origin: '*'}));
+//app.use(cors({origin: '*'}));
 
 app.use(express.json());
 
@@ -144,6 +144,143 @@ async function collectWeather(){
         logError("Error saving weatherdata: " + error)
         console.error(`Error saving weatherdata, reason:\n\n${error}`);
     }
+}
+
+/**
+ * Updates images by fetching the latest images from Google Drive, downloading them, and updating the server with the new images.
+ * 
+ * This function performs the following steps:
+ * 1. Sets up an endpoint `/update-images` to handle the image update request.
+ * 2. Uses the Google Drive API to list image files based on specific criteria.
+ * 3. Sorts and processes the image files to determine the newest images for different categories.
+ * 4. Updates environment variables with the IDs of the newest images.
+ * 5. Downloads the newest images and saves them to the server.
+ * 6. Sends an update notification with the new image URLs.
+ * 
+ * @async
+ * @function updateImages
+ * @throws Will throw an error if there is an issue with setting credentials, listing folders, getting a response, or downloading images.
+ */
+async function updateImages(){
+
+    debug(false,"Updating images");
+    
+
+    try {
+
+        oAuth2Client.setCredentials({
+            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
+        });
+
+        try{
+            debug(false,"Trying to get images");
+            // Use the Google Drive API to list folders
+            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
+            
+            const response = await drive.files.list({
+                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
+                fields: 'nextPageToken, files(id, name, parents)',
+                spaces: 'drive',
+            });
+
+            debug(false,"Trying to sort through response data");
+
+            const mapping = [
+                {avd: "Bilde_Elektro", target: elektroBilder},
+                {avd: "Bilde_Renovasjon", target: renoBilder},
+                {avd: "Bilde_Bygg", target: byggBilder},
+                {avd: "Bilde_Telefonvakt_1", target: telefonvaktBilder1},
+                {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
+            ];
+
+            var createdDate1;
+            var createdDate2;
+            var createdDate;
+
+            response.data.files.forEach(function(file){
+
+                for (let map of mapping){
+                    if (file.name.includes(map.avd)){
+                        
+                        createdDate1 = file.name.split(" ")[1];
+                        createdDate2 = file.name.split(" ")[2];
+                        var [day, month, year] = createdDate1.split("-");
+                        var [hour, minute] = createdDate2.split(":");
+                        
+                        createdDate = Date.parse(new Date(year, month, day, hour, minute));
+                        
+                        map.target[file.name] = {
+                            file_name: file.name,
+                            file_id: file.id,
+                            file_date: createdDate,
+                        };
+                    
+                        break;
+
+                    }                    
+                }
+
+            });
+
+            debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\n`);
+        
+            const nyesteElektroBilde = getNewestImage(elektroBilder);
+            const nyesteRenoBilde = getNewestImage(renoBilder);
+            const nyesteByggBilde = getNewestImage(byggBilder);
+            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
+            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
+
+            process.env.ELEKTROBILDE = nyesteElektroBilde;
+            process.env.RENOVASJONSBILDE = nyesteRenoBilde;
+            process.env.BYGGBILDE = nyesteByggBilde;
+            process.env.TELEFONBILDE1 = nyesteTelefonBilde1;
+            process.env.TELEFONBILDE2 = nyesteTelefonBilde2;
+
+            
+
+            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
+
+        } catch (error){
+            logError("Error getting a response: " + error)
+            console.error('Error getting a response:', error);
+        }
+    
+    } catch (error) {
+        logError("Error listing folders: " + error)
+        console.error('Error listing folders:', error);
+    }
+
+    try{
+        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2]
+
+        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
+
+        const links = fileLinks.map(fileLink => fileLink.webContentLink);
+
+        const imageDir = path.join(__dirname, 'images');
+        ensureDirectoryExists(imageDir);
+
+        const downloadPromises = links.map((link, index) => {
+            const imagePath = path.join(imageDir, `image${index + 1}.png`);
+            imgUrls[index] = `${baseURL}/images/image${index + 1}.png`;
+            return downloadImage(link, imagePath);
+        });
+
+        await Promise.all(downloadPromises);
+
+        sendUpdate({type: "images", data: imgUrls, date: new Date()});
+
+        debug(false,"updateImages finished");
+
+        writeToLog("Images updated");
+
+    } catch (error){
+        logError("Error while downloading images: " + error)
+        console.error(`Error while downloading images: ${error}`);
+    }
+
+    
+
 }
 
 async function collectImages(){
@@ -268,8 +405,6 @@ async function listFolders() {
     }
 }
 
-var authWindow;
-
 /**
  * Tries to automatically authenticate with the google drive api, if it can't, it opens an authentication window in the default browser.
  */
@@ -283,9 +418,9 @@ function authenticate() {
 
         process.env.REFRESH_TOKEN = tokenData.refresh_token;
 
-        writeToLog("Authenticated using refresh token.");
+        writeToLog("Authenticated automatically using stored refresh-token.");
 
-        console.log("Authenticated");
+        console.log("Authenticated automatically");
 
         listFolders();
     } else {
@@ -307,8 +442,8 @@ function authenticate() {
             const {default : open} = await import('open');
 
             try {
-                authWindow = await open(authUrl);
                 console.log("Please authenticate in the browser");
+                authWindow = await open(authUrl);
             } catch (error){
                 console.error(`Failed to open browser: ${error}`);
             }
@@ -702,151 +837,6 @@ async function readWeatherData(weatherPath) {
 }
 
 /**
- * Updates images by fetching the latest images from Google Drive, downloading them, and updating the server with the new images.
- * 
- * This function performs the following steps:
- * 1. Sets up an endpoint `/update-images` to handle the image update request.
- * 2. Uses the Google Drive API to list image files based on specific criteria.
- * 3. Sorts and processes the image files to determine the newest images for different categories.
- * 4. Updates environment variables with the IDs of the newest images.
- * 5. Downloads the newest images and saves them to the server.
- * 6. Sends an update notification with the new image URLs.
- * 
- * @async
- * @function updateImages
- * @throws Will throw an error if there is an issue with setting credentials, listing folders, getting a response, or downloading images.
- */
-async function updateImages(){
-
-    debug(false,"Updating images");
-    
-
-    try {
-
-        oAuth2Client.setCredentials({
-            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-        });
-
-        try{
-            debug(false,"Trying to get images");
-            // Use the Google Drive API to list folders
-            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-            
-            const response = await drive.files.list({
-                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
-                fields: 'nextPageToken, files(id, name, parents)',
-                spaces: 'drive',
-            });
-
-            debug(false,"Trying to sort through response data");
-
-            const mapping = [
-                {avd: "Bilde_Elektro", target: elektroBilder},
-                {avd: "Bilde_Renovasjon", target: renoBilder},
-                {avd: "Bilde_Bygg", target: byggBilder},
-                {avd: "Bilde_Telefonvakt_1", target: telefonvaktBilder1},
-                {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
-            ];
-
-            var createdDate1;
-            var createdDate2;
-            var createdDate;
-
-            response.data.files.forEach(function(file){
-
-                for (let map of mapping){
-                    if (file.name.includes(map.avd)){
-                        
-                        createdDate1 = file.name.split(" ")[1];
-                        createdDate2 = file.name.split(" ")[2];
-                        var [day, month, year] = createdDate1.split("-");
-                        var [hour, minute] = createdDate2.split(":");
-                        
-                        createdDate = Date.parse(new Date(year, month, day, hour, minute));
-                        
-                        map.target[file.name] = {
-                            file_name: file.name,
-                            file_id: file.id,
-                            file_date: createdDate,
-                        };
-                    
-                        break;
-
-                    }                    
-                }
-
-            });
-
-            debug(false,`Antall Elektro bilder: ${Object.keys(elektroBilder).length}\nAntall Renovasjons bilder: ${Object.keys(renoBilder).length}\nAntall Bygg bilder: ${Object.keys(byggBilder).length}\n`);
-        
-            const nyesteElektroBilde = getNewestImage(elektroBilder);
-            const nyesteRenoBilde = getNewestImage(renoBilder);
-            const nyesteByggBilde = getNewestImage(byggBilder);
-            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
-            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
-
-            process.env.ELEKTROBILDE = nyesteElektroBilde;
-            process.env.RENOVASJONSBILDE = nyesteRenoBilde;
-            process.env.BYGGBILDE = nyesteByggBilde;
-            process.env.TELEFONBILDE1 = nyesteTelefonBilde1;
-            process.env.TELEFONBILDE2 = nyesteTelefonBilde2;
-
-            
-
-            debug(false,`\nNyeste elektrobilde: ${nyesteElektroBilde}\nNyeste renobilde: ${nyesteRenoBilde}\nNyeste byggbilde: ${nyesteByggBilde}`);
-
-        } catch (error){
-            logError("Error getting a response: " + error)
-            console.error('Error getting a response:', error);
-        }
-    
-    } catch (error) {
-        logError("Error listing folders: " + error)
-        console.error('Error listing folders:', error);
-    }
-
-    try{
-        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2]
-
-        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
-
-        const links = fileLinks.map(fileLink => fileLink.webContentLink);
-
-        const imageDir = path.join(__dirname, 'images');
-        ensureDirectoryExists(imageDir);
-
-        const downloadPromises = links.map((link, index) => {
-            const imagePath = path.join(imageDir, `image${index + 1}.png`);
-            imgUrls[index] = `${baseURL}/images/image${index + 1}.png`;
-            return downloadImage(link, imagePath);
-        });
-
-        await Promise.all(downloadPromises);
-
-        sendUpdate({type: "images", data: imgUrls, date: new Date()});
-
-        debug(false,"updateImages finished");
-
-    } catch (error){
-        logError("Error while downloading images: " + error)
-        console.error(`Error while downloading images: ${error}`);
-    }
-
-    writeToLog("Images updated");
-
-}
-
-/**
- * Displays the Google OAuth 2.0 login screen with a link to initiate the login process.
- * @function GET /
- * @returns redirect to /auth
- */
-/*app.get('/', (req, res) => {
-    res.send('<h1>Authentication complete, you can close this tab</h1>');
-});*/
-
-
-/**
  * Handles the OAuth 2.0 callback, exchanges the authorization code for tokens, and Redirects to the list folders route.
  * @async
  * @function GET /auth/callback
@@ -887,196 +877,6 @@ app.get('/auth/callback', async (req, res) => {
         res.status(500).send('Error retrieving access token.');
     }
 });
-
-/**
- * Lists the folders in the authenticated user's Google Drive.
- * @async
- * @function GET /list-folders
- * @returns Redirects to /download-images
- * @throws Will log an error if there is an issue listing the folders.
- */
-/*app.get('/list-folders', async (req, res) => {
-    
-    try {
-        // Set credentials with the refresh token
-        oAuth2Client.setCredentials({
-            refresh_token: process.env.REFRESH_TOKEN // Retrieve this from your database
-        });
-
-        try{
-            debug(false,"Trying to get images");
-            // Use the Google Drive API to list folders
-            const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-            
-            const response = await drive.files.list({
-                q: "mimeType contains 'image/' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false",
-                fields: 'nextPageToken, files(id, name, parents)',
-                spaces: 'drive',
-            });
-
-            debug(false,"Trying to sort through response data");
-
-            const mapping = [
-                {avd: "Bilde_Elektro", target: elektroBilder},
-                {avd: "Bilde_Renovasjon", target: renoBilder},
-                {avd: "Bilde_Bygg", target: byggBilder},
-                {avd: "Bilde_Telefonvakt_1", target: telefonvaktBilder1},
-                {avd: "Bilde_Telefonvakt_2", target: telefonvaktBilder2}
-            ];
-            
-            debug(false, `antall filer: ${response.data.files.length}`);
-
-            var createdDate1;
-            var createdDate2;
-            var createdDate;
-
-            response.data.files.forEach(function(file){
-
-                for (let map of mapping){
-                    if (file.name.includes(map.avd)){
-                        
-                        createdDate1 = file.name.split(" ")[1];
-                        createdDate2 = file.name.split(" ")[2];
-                        var [day, month, year] = createdDate1.split("-");
-                        var [hour, minute] = createdDate2.split(":");
-                        
-                        createdDate = Date.parse(new Date(year, month, day, hour, minute));
-                        
-                        map.target[file.name] = {
-                            file_name: file.name,
-                            file_id: file.id,
-                            file_date: createdDate,
-                        };
-                    
-                        break;
-
-                    }                    
-                }
-
-            });
-
-            debug(false,`Elektro bilder: ${Object.keys(elektroBilder)}\nRenovasjons bilder: ${Object.keys(renoBilder)}\nBygg bilder: ${Object.keys(byggBilder)}`);
-        
-            const nyesteElektroBilde = getNewestImage(elektroBilder);
-            const nyesteRenoBilde = getNewestImage(renoBilder);
-            const nyesteByggBilde = getNewestImage(byggBilder);
-            const nyesteTelefonBilde1 = getNewestImage(telefonvaktBilder1);
-            const nyesteTelefonBilde2 = getNewestImage(telefonvaktBilder2);
-
-            process.env.ELEKTROBILDE = nyesteElektroBilde;
-            process.env.RENOVASJONSBILDE = nyesteRenoBilde;
-            process.env.BYGGBILDE = nyesteByggBilde;
-            process.env.TELEFONBILDE1 = nyesteTelefonBilde1;
-            process.env.TELEFONBILDE2 = nyesteTelefonBilde2;
-
-            debug(false,`\nElektrobilde id: ${process.env.ELEKTROBILDE}\nRenobilde Id: ${process.env.RENOVASJONSBILDE}\nByggbilde Id: ${process.env.BYGGBILDE}\n\nTelefonvaktbilde 1 Id: ${process.env.TELEFONBILDE1}\nTelefonvaktbilde 2 Id: ${process.env.TELEFONBILDE2}`);
-
-            res.redirect(`${baseURL}/download-images`);
-
-        } catch (error){
-            logError("Error getting a response: " + error)
-            console.error('Error getting a response:', error);
-            res.redirect(baseURL);
-            //res.status(500).send('Error getting response.');
-        }
-    
-    } catch (error) {
-        logError("Error listing folders: " + error)
-        console.error('Error listing folders:', error);
-        res.redirect(baseURL);
-        //res.status(500).send('Error listing folders.');
-    }
-});*/
-
-/*app.get('/images/:imageName', (req, res) => {
-    const imageName = req.params.imageName;
-    const imagePath = path.join(__dirname, 'images', imageName);
-    res.sendFile(imagePath);
-
-});*/
-
-/**
- * Downloads the latest images from Google Drive and saves them to the server.
- * @async
- * @function GET /download-images
- * @returns Redirects to /download-weather
- * @throws Will log an error if there is an issue downloading the images.
- */
-/*app.get('/download-images', async (req, res) => {
-    try{
-        const drive = google.drive({ version: 'v3', auth: oAuth2Client });
-
-        const fileIds = [process.env.ELEKTROBILDE, process.env.RENOVASJONSBILDE, process.env.BYGGBILDE, process.env.TELEFONBILDE1, process.env.TELEFONBILDE2];
-
-        const fileLinks = await Promise.all(fileIds.map(id => getImgLink(id)));
-
-        const links = fileLinks.map(fileLink => fileLink.webContentLink);
-
-        const imageDir = path.join(__dirname, 'images');
-        ensureDirectoryExists(imageDir);
-
-        const downloadPromises = links.map((link, index) => {
-            const imagePath = path.join(imageDir, `image${index + 1}.png`);
-            imgUrls[index] = `${baseURL}/images/image${index + 1}.png`;
-            return downloadImage(link, imagePath);
-        });
-
-        await Promise.all(downloadPromises);
-
-        setInterval(updateImages, 3600000);
-
-        sendUpdate({type: "images", data: imgUrls, date: new Date()});
-
-        writeToLog("Images downloaded");
-
-        res.redirect(`${baseURL}/download-weather`);
-
-    } catch (error){
-        logError("Error while downloading images: " + error)
-        console.error(`Error while downloading images: ${error}`);
-        res.status(500).send("Error downloading images");
-    }
-});*/
-
-/**
- * Downloads the latest weather data and saves it to the server.
- * @async
- * @function GET /download-weather
- * @returns Redirects to the root route.
- * @throws Will log an error if there is an issue downloading the weather data.
- */
-/*app.get(`/download-weather`, async (req, res) => {
-
-    try{
-                
-        var weatherResponse = await downloadWeatherData(weatherPath);
-        
-        if(weatherResponse != null){
-            setTimeout(async () => {
-                weatherData = await readWeatherData(weatherPath);
-                sendUpdate({type: "weather", data: weatherData});
-            }, 500);
-            
-        }
-
-        setInterval(() => downloadWeatherData(weatherPath), 600000);
-        
-        setInterval(async () => {
-
-            weatherData = await readWeatherData(weatherPath);
-            sendUpdate({type: "weather", data: weatherData});
-
-        }, 605000);
-        
-
-    } catch (error){
-        logError("Error saving weatherdata: " + error)
-        console.error(`Error saving weatherdata, reason:\n\n${error}`);
-    } finally {
-        res.redirect(baseURL);
-    }
-
-});*/
 
 app.get(`/get-connection`, (req, res) => {
     res.send(`ws://${hostName}:3001`);
@@ -1180,7 +980,7 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-// Start the server
+// Server
 app.listen(3000, '0.0.0.0', () => {
     
     authenticate();
@@ -1194,6 +994,7 @@ app.listen(3000, '0.0.0.0', () => {
     console.log(`Server started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on ${hostName}\n`);
 });
 
+// Websocket Server
 server.listen(3001, hostName, () => {
     console.log(`Websocket started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on ${Object.values(server.address())}\n`);
 });
