@@ -468,7 +468,7 @@ function authenticate() {
                 console.log("Please authenticate in the browser");
                 authWindow = await open(authUrl);
             } catch (error){
-                console.error(`Failed to open browser: ${error}`);
+                logError(`Failed to authenticate: ${error}`);
             }
         
         })();
