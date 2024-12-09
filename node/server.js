@@ -14,9 +14,6 @@ const readline = require('readline');
 const moment = require('moment');
 const os = require('os');
 
-const https_server = https.createServer();
-const https_wss = new WebSocket.Server({ https_server });
-
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
