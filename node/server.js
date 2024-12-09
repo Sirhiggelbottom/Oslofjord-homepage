@@ -10,7 +10,6 @@ const https = require('https');
 const app = express();
 const WebSocket = require('ws');
 const http = require('http');
-const https = require('https');
 const readline = require('readline');
 const moment = require('moment');
 const os = require('os');
