@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const url = `${window.location.protocol}//${window.location.hostname}:3000/get-connection`;
 
+        console.log(`Trying to reach: ${url}`);
+
         fetch(url)
             .then(response => response.text())
             .then(data => {
