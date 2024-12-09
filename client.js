@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hostName;
         var contentTimeout;
 
+
+
         const url = `https://2b3c-81-166-218-138.ngrok-free.app/get-connection`;
 
         console.log(`Trying to reach: ${url}`);
@@ -18,7 +20,8 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch(url)
             .then(response => response.text())
             .then(data => {
-                hostName = data;
+
+                hostName = data.replace("http", "ws");
                 connectSocket();
             });
 
