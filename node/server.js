@@ -7,15 +7,16 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const port = 3000;
 const app = express();
 const WebSocket = require('ws');
 const http = require('http');
-const { send } = require('process');
-const { Socket } = require('dgram');
+const https = require('https');
 const readline = require('readline');
 const moment = require('moment');
 const os = require('os');
+
+const https_server = https.createServer();
+const https_wss = new WebSocket.Server({ https_server });
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
@@ -902,7 +903,7 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get(`/get-connection`, (req, res) => {
-    res.send(`ws://${hostName}:3001`);
+    res.send(`ws://f1eb-81-166-218-138.ngrok-free.app:3001`);
 });
 
 process.on('uncaughtException', (err) => {

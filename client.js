@@ -190,7 +190,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         }
         
-         
 
         // Display current date and time
         function updateDateTime() {
@@ -271,23 +270,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.error(`Error: ${error}`);
             }
             
-            
-            /*
-            if (selectedValue != "option1"){
-                if (contentTimeout){
-                    clearTimeout(contentTimeout);
-
-                }
-            } else {
-
-                if (!contentTimeout){
-
-                    contentTimeout = setTimeout(() => {
-                        requestAnimationFrame(cycleContent);
-        
-                    }, currentContent["tid"] * 1000);
-                }
-            }*/
         }); 
 
         function cycleContent() {
