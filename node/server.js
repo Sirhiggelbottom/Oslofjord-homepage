@@ -903,7 +903,7 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get(`/get-connection`, (req, res) => {
-    res.send(`ws://9ad9-81-166-218-138.ngrok-free.app`);
+    res.send(`ws://f8f3-81-166-218-138.ngrok-free.app`);
 });
 
 process.on('uncaughtException', (err) => {
@@ -1005,7 +1005,7 @@ wss.on('connection', (ws, req) => {
 });
 
 // Server
-app.listen(3000, '0.0.0.0', () => {
+app.listen(3000, () => {
     
     authenticate();
 
@@ -1019,6 +1019,6 @@ app.listen(3000, '0.0.0.0', () => {
 });
 
 // Websocket Server
-server.listen(3001, hostName, () => {
+server.listen(3001, () => {
     console.log(`Websocket started at: ${new Date().toLocaleString('en-GB', { hour12: false })}, running on ${Object.values(server.address())}\n`);
 });
