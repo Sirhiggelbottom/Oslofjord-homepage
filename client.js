@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const url = `https://7a33-81-166-218-138.ngrok-free.app/get-connection`;
 
-        console.log(`Trying to reach: ${url}`);
+        console.log(`Trying to reach: ${hostName}`);
 
         /*fetch(url)
             .then(response => response.text())
@@ -26,6 +26,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 hostName = url.replace("http", "ws");
                 connectSocket();
             });*/
+
+        connectSocket();
 
         const imageElements = [
             document.getElementById('image1'),
