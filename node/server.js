@@ -903,7 +903,7 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get(`/get-connection`, (req, res) => {
-    res.send(`ws://f1eb-81-166-218-138.ngrok-free.app:3001`);
+    res.send(`ws://9ad9-81-166-218-138.ngrok-free.app`);
 });
 
 process.on('uncaughtException', (err) => {
