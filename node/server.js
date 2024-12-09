@@ -899,7 +899,7 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get(`/get-connection`, (req, res) => {
-    res.send(`ws://${hostName}:3001`);
+    res.send(`ws://https://354d-81-166-218-138.ngrok-free.app`);
 });
 
 process.on('uncaughtException', (err) => {
