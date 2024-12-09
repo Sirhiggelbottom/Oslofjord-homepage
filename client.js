@@ -147,7 +147,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
                         response.data.forEach((url, index) => {
                             if(imageElements[index]){
-                                imageElements[index].src = `${url.replace(/\d+\.\d+\.\d+\.\d+.\d{4}/gm, "7a33-81-166-218-138.ngrok-free.app")}?timestamp=${new Date().getTime()}`;
+                                imageElements[index].src = `${url.replace(/\d+\.\d+\.\d+\.\d+.\d{4}/gm, "7a33-81-166-218-138.ngrok-free.app")}?nocache=${Date.now()}`;
                                 console.log(`Bilde url: ${imageElements[index].src}`);
                             } else {
                                 packet = {type: "error", message: "Array size mismatch!"};
