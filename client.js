@@ -20,8 +20,10 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch(url)
             .then(response => response.text())
             .then(data => {
+                let regex = /^https:\/\/[0-9a-f]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+\.[a-z-]+\.app$/gm
+                let url = data.match(regex);
 
-                hostName = data.replace("http", "ws");
+                hostName = url.replace("http", "ws");
                 connectSocket();
             });
 
