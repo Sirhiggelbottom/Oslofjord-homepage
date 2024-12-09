@@ -11,21 +11,21 @@ document.addEventListener("DOMContentLoaded", function () {
         var hostName;
         var contentTimeout;
 
-
+        hostName = "https://3c97-81-166-218-138.ngrok-free.app";
 
         const url = `https://7a33-81-166-218-138.ngrok-free.app/get-connection`;
 
         console.log(`Trying to reach: ${url}`);
 
-        fetch(url)
+        /*fetch(url)
             .then(response => response.text())
             .then(data => {
-                let regex = /^https:\/\/[0-9a-f]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+\.[a-z-]+\.app$/gm
-                let url = data.match(regex);
+            
+                let url = data.match("https://3c97-81-166-218-138.ngrok-free.app");
 
                 hostName = url.replace("http", "ws");
                 connectSocket();
-            });
+            });*/
 
         const imageElements = [
             document.getElementById('image1'),
