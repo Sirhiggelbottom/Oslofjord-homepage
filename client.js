@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
-        const url = `https://2b3c-81-166-218-138.ngrok-free.app/get-connection`;
+        const url = `https://7a33-81-166-218-138.ngrok-free.app/get-connection`;
 
         console.log(`Trying to reach: ${url}`);
 
