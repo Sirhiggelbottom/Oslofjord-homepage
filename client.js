@@ -11,21 +11,18 @@ document.addEventListener("DOMContentLoaded", function () {
         var hostName;
         var contentTimeout;
 
-        hostName = "https://3c97-81-166-218-138.ngrok-free.app";
+        
 
-        const url = `https://7a33-81-166-218-138.ngrok-free.app/get-connection`;
+        const url = `${window.location.protocol}//${window.location.hostname}:3000/get-connection`;
 
-        console.log(`Trying to reach: ${hostName}`);
 
-        /*fetch(url)
+        fetch(url)
             .then(response => response.text())
             .then(data => {
             
-                let url = data.match("https://3c97-81-166-218-138.ngrok-free.app");
-
-                hostName = url.replace("http", "ws");
+                hostName = data;
                 connectSocket();
-            });*/
+            });
 
         connectSocket();
 
@@ -147,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
                         response.data.forEach((url, index) => {
                             if(imageElements[index]){
-                                imageElements[index].src = `${url.replace(/\d+\.\d+\.\d+\.\d+.\d{4}/gm, "7a33-81-166-218-138.ngrok-free.app")}?nocache=${Date.now()}`;
+                                imageElements[index].src = `${url}?nocache=${Date.now()}`;
                                 console.log(`Bilde url: ${imageElements[index].src}`);
                             } else {
                                 packet = {type: "error", message: "Array size mismatch!"};
